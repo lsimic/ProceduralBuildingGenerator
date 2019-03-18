@@ -69,6 +69,9 @@ class SectionElement:
 
 
 class GenerateSectionParamsFactory:
+    # TODO: docstring
+    # possibly remove this class and move the generating methods somewhere else?
+
     @staticmethod
     def horizontal_separator_params():
         params = GenerateSectionParams(

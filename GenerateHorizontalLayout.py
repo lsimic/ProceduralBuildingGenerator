@@ -37,6 +37,7 @@ class GenerateHorizontalLayoutParams:
 
 
 def generate_horizontal_layout(params):
+    # TODO: docstring
     layout = list()
     # bottom left corner
     if params.chamfer_size > 0:

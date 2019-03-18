@@ -48,8 +48,7 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
                 vec_next = vec_from_verts(layout_verts[i], layout_verts[i + 1])
             else:
                 vec_next = vec_from_verts(layout_verts[i], layout_verts[i + 1])
-                vec_prev = vec_next.copy()
-                vec_prev.negate()
+                vec_prev = vec_from_verts(layout_verts[i + 1], layout_verts[i])
             # end if
         elif i == (layout_vert_count - 1):
             if is_loop:
@@ -57,8 +56,7 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
                 vec_next = vec_from_verts(layout_verts[i], layout_verts[0])
             else:
                 vec_prev = vec_from_verts(layout_verts[i], layout_verts[i - 1])
-                vec_next = vec_prev.copy()
-                vec_next.negate()
+                vec_next = vec_from_verts(layout_verts[i - 1], layout_verts[i])
             # end if
         else:
             vec_prev = vec_from_verts(layout_verts[i], layout_verts[i - 1])
@@ -72,12 +70,22 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
         # calculate the angle to use in transformation
         vec_prev.negate()
         vec_next.negate()
+
         vec_sum = vec_prev + vec_next
-        angle_desired = vec_0.xy.angle_signed(vec_sum.xy)
+        if vec_sum.length == 0:
+            angle_desired = vec_0.xy.angle_signed(vec_next.xy) + 0.5*math.pi
+        else:
+            angle_desired = vec_0.xy.angle_signed(vec_sum.xy, 0)
+        # end if
+
+        if -math.pi < vec_next.xy.angle_signed(vec_prev.xy) < 0:
+            angle_desired += math.pi
+        # end if
+
         angle_to_transform = angle_previous - angle_desired
 
         # calculate the scale to use in transformation
-        scale_desired = 1/(math.cos(math.radians(90) - 0.5 * vec_next.xy.angle_signed(vec_prev.xy)))
+        scale_desired = math.fabs(1/(math.cos(math.radians(90) - 0.5 * vec_next.xy.angle_signed(vec_prev.xy))))
         scale_to_transform = scale_desired / scale_previous
 
         # if it's the first iteration, move the mesh from the center to the first vert position
@@ -87,12 +95,9 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
             verts_to_transform = separator_bmesh.verts
             bmesh.ops.translate(separator_bmesh, vec=layout_verts[i], verts=verts_to_transform, space=mat_loc)
         else:
-            mat_loc = mathutils.Matrix.Translation((-layout_verts[i - 1][0], -layout_verts[i - 1][1], -layout_verts[i - 1][2]))
-            vec_extrude = mathutils.Vector((
-                    layout_verts[i][0] - layout_verts[i - 1][0],
-                    layout_verts[i][1] - layout_verts[i - 1][1],
-                    layout_verts[i][2] - layout_verts[i - 1][2]
-            ))
+            mat_loc = mathutils.Matrix.Translation((-layout_verts[i - 1][0], -layout_verts[i - 1][1],
+                                                    -layout_verts[i - 1][2]))
+            vec_extrude = vec_from_verts(layout_verts[i-1], layout_verts[i])
             edges_to_extrude = [ele for ele in geom_last if isinstance(ele, bmesh.types.BMEdge)]
             ret_extrude = bmesh.ops.extrude_edge_only(separator_bmesh, edges=edges_to_extrude, use_select_history=True)
             verts_to_transform = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
@@ -112,7 +117,7 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
                         verts=verts_to_transform)
 
         # if this is the last iteration, bridge the loop between first and last section loop
-        if i == layout_vert_count - 1:
+        if (i == layout_vert_count - 1) and is_loop:
             edges_initial = [ele for ele in geom_initial if isinstance(ele, bmesh.types.BMEdge)]
             edges_last = [ele for ele in geom_last if isinstance(ele, bmesh.types.BMEdge)]
             bmesh.ops.bridge_loops(separator_bmesh, edges=edges_initial+edges_last)

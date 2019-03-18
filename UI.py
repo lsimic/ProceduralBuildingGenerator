@@ -3,6 +3,8 @@ from bpy.props import FloatProperty, BoolProperty
 
 
 class PBGPropertyGroup(PropertyGroup):
+    # TODO: docstring
+
     width = FloatProperty(
         name="Width",
         default=25.0
@@ -57,10 +59,36 @@ class PBGPropertyGroup(PropertyGroup):
         name="Separator width",
         default=0.5
     )
+
+    total_window_width = FloatProperty(
+        name="Total window width",
+        default=1.2
+    )
+
+    window_window_distance = FloatProperty(
+        name="Distance between windows",
+        default=2.5
+    )
+
+    generate_pillar = BoolProperty(
+        name="Generate Pillar",
+        default=True
+    )
+
+    pillar_width = FloatProperty(
+        name="Pillar width",
+        default=0.2
+    )
+
+    window_pillar_distance = FloatProperty(
+        name="Distance Window to Pillar",
+        default=0.8
+    )
 # end PBGPropertyGroup
 
 
 class PBGToolbarGeneralPanel(Panel):
+    # TODO: docstring
     bl_label = "General"
     bl_category = "PBG"
     bl_space_type = "VIEW_3D"
@@ -79,15 +107,22 @@ class PBGToolbarGeneralPanel(Panel):
         col.prop(properties, "wedge_depth")
         col.prop(properties, "wedge_width")
 
-        col.label(text="Floor layout settings")
+        col.label(text="Floor layout")
         col.prop(properties, "floor_count")
         col.prop(properties, "floor_height")
         col.prop(properties, "first_floor_offset")
 
-        col.label(text="Floor separator settings")
+        col.label(text="Floor separator")
         col.prop(properties, "separator_between_floors")
         col.prop(properties, "separator_width")
         col.prop(properties, "separator_height")
+
+        col.label(text="Vertical layout")
+        col.prop(properties, "total_window_width")
+        col.prop(properties, "window_window_distance")
+        col.prop(properties, "generate_pillar")
+        col.prop(properties, "pillar_width")
+        col.prop(properties, "window_pillar_distance")
 
         row = layout.row(align=True)
         row.operator("pbg.generate_building", text="Generate")
@@ -96,6 +131,7 @@ class PBGToolbarGeneralPanel(Panel):
 
 
 class PBGToolbarSettingsPanel(Panel):
+    # TODO: docstring
     bl_label = "Settings"
     bl_category = "PBG"
     bl_space_type = "VIEW_3D"
