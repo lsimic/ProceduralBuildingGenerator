@@ -70,8 +70,8 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
         # calculate the angle to use in transformation
         vec_prev.negate()
         vec_next.negate()
-
         vec_sum = vec_prev + vec_next
+        # TODO: this feels really hackish, but works. Should improve this...
         if vec_sum.length == 0:
             angle_desired = vec_0.xy.angle_signed(vec_next.xy) + 0.5*math.pi
         else:
@@ -81,7 +81,6 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
         if -math.pi < vec_next.xy.angle_signed(vec_prev.xy) < 0:
             angle_desired += math.pi
         # end if
-
         angle_to_transform = angle_previous - angle_desired
 
         # calculate the scale to use in transformation

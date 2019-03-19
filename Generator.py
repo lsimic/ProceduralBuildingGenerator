@@ -32,6 +32,10 @@ class Generator(bpy.types.Operator):
 
         generate_walls(vertical_layout["wall_layout_loops"], context, params)
 
+        for window_pos in vertical_layout["window_positions"]:
+            print(window_pos)
+        # end for
+
         return {"FINISHED"}
     # end invoke
 # end Generator
