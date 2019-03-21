@@ -105,6 +105,22 @@ class GenerateSectionParamsFactory:
         )
         return params
     # end horizontal_separator_params_normalized
+
+    @staticmethod
+    def horizontal_separator_params_large():
+        params = GenerateSectionParams(
+            s_min_size=0.05,
+            s_max_size=0.1,
+            m_min_size=0.2,
+            m_max_size=0.3,
+            l_min_size=0.4,
+            l_max_size=0.6,
+            ss_limit=0.05,
+            sc_limit=0.1,
+            ms_limit=0.4,
+            mc_limit=0.7
+        )
+        return params
 # GenerateSectionParamsFactory
 
 

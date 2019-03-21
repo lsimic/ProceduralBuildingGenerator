@@ -125,7 +125,7 @@ def generate_vertical_layout(params, h_layout_verts):
             wall_layout_verts.append((edge_vert_x, edge_vert_y, 0))
 
             # calculate pillar positions
-            if j == 0:
+            if j == 0 or has_single_pillar is False:
                 pillar_x = window_x - wp_dist_x
                 pillar_y = window_y - wp_dist_y
                 pillar_positions.append((pillar_x, pillar_y, rot))

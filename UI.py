@@ -75,14 +75,39 @@ class PBGPropertyGroup(PropertyGroup):
         default=True
     )
 
+    window_pillar_distance = FloatProperty(
+        name="Distance Window to Pillar",
+        default=0.8
+    )
+
     pillar_width = FloatProperty(
         name="Pillar width",
         default=0.2
     )
 
-    window_pillar_distance = FloatProperty(
-        name="Distance Window to Pillar",
-        default=0.8
+    pillar_depth = FloatProperty(
+        name="Pillar depth",
+        default=0.15
+    )
+
+    pillar_chamfer = FloatProperty(
+        name="Pillar Chamfer",
+        default=0.05
+    )
+
+    pillar_offset = FloatProperty(
+        name="Pillar Offset",
+        default=0.7
+    )
+
+    pillar_offset_size = FloatProperty(
+        name="Pillar Offset Size",
+        default=0.05
+    )
+
+    pillar_horizontal_separator = BoolProperty(
+        name="Pillar Horizontal separator",
+        default=True
     )
 # end PBGPropertyGroup
 
