@@ -5,32 +5,32 @@ from bpy.props import FloatProperty, BoolProperty
 class PBGPropertyGroup(PropertyGroup):
     # TODO: docstring
 
-    width = FloatProperty(
-        name="Width",
+    building_width = FloatProperty(
+        name="Building width",
         default=25.0
     )
 
-    depth = FloatProperty(
-        name="Depth",
+    building_depth = FloatProperty(
+        name="Building depth",
         default=15.0
     )
 
-    chamfer_size = FloatProperty(
+    building_chamfer = FloatProperty(
         name="Chamfer size",
         default=1
     )
 
-    wedge_depth = FloatProperty(
+    building_wedge_depth = FloatProperty(
         name="Wedge depth",
         default=1.5
     )
 
-    wedge_width = FloatProperty(
+    building_wedge_width = FloatProperty(
         name="Wedge width",
         default=8
     )
 
-    first_floor_offset = FloatProperty(
+    floor_first_offset = FloatProperty(
         name="FIrst floor offset",
         default=0.7
     )
@@ -45,27 +45,27 @@ class PBGPropertyGroup(PropertyGroup):
         default=2
     )
 
-    separator_between_floors = BoolProperty(
+    floor_separator_include = BoolProperty(
         name="Separator between floors",
         default=True
     )
 
-    separator_height = FloatProperty(
+    floor_separator_height = FloatProperty(
         name="Separator height",
         default=0.5
     )
 
-    separator_width = FloatProperty(
+    floor_separator_width = FloatProperty(
         name="Separator width",
         default=0.5
     )
 
-    total_window_width = FloatProperty(
+    window_width = FloatProperty(
         name="Total window width",
         default=1.2
     )
 
-    window_window_distance = FloatProperty(
+    distance_window_window = FloatProperty(
         name="Distance between windows",
         default=2.5
     )
@@ -75,7 +75,7 @@ class PBGPropertyGroup(PropertyGroup):
         default=True
     )
 
-    window_pillar_distance = FloatProperty(
+    distance_window_pillar = FloatProperty(
         name="Distance Window to Pillar",
         default=0.8
     )
@@ -95,8 +95,8 @@ class PBGPropertyGroup(PropertyGroup):
         default=0.05
     )
 
-    pillar_offset = FloatProperty(
-        name="Pillar Offset",
+    pillar_offset_height = FloatProperty(
+        name="Pillar Offset Height",
         default=0.7
     )
 
@@ -105,8 +105,8 @@ class PBGPropertyGroup(PropertyGroup):
         default=0.05
     )
 
-    pillar_horizontal_separator = BoolProperty(
-        name="Pillar Horizontal separator",
+    pillar_include_floor_separator = BoolProperty(
+        name="Include floor separator",
         default=True
     )
 # end PBGPropertyGroup
@@ -114,7 +114,7 @@ class PBGPropertyGroup(PropertyGroup):
 
 class PBGToolbarGeneralPanel(Panel):
     # TODO: docstring
-    bl_label = "General"
+    bl_label = "General Settings"
     bl_category = "PBG"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS"
@@ -125,39 +125,27 @@ class PBGToolbarGeneralPanel(Panel):
         properties = context.scene.PBGPropertyGroup
 
         col = layout.column(align=True)
-        col.label(text="Overall Dimensions")
-        col.prop(properties, "width")
-        col.prop(properties, "depth")
-        col.prop(properties, "chamfer_size")
-        col.prop(properties, "wedge_depth")
-        col.prop(properties, "wedge_width")
+        col.label(text="Overall Building Dimensions")
+        col.prop(properties, "building_width")
+        col.prop(properties, "building_depth")
+        col.prop(properties, "building_chamfer")
+        col.prop(properties, "building_wedge_depth")
+        col.prop(properties, "building_wedge_width")
 
-        col.label(text="Floor layout")
+        col.label(text="Floor and separator layout")
         col.prop(properties, "floor_count")
         col.prop(properties, "floor_height")
-        col.prop(properties, "first_floor_offset")
-
-        col.label(text="Floor separator")
-        col.prop(properties, "separator_between_floors")
-        col.prop(properties, "separator_width")
-        col.prop(properties, "separator_height")
-
-        col.label(text="Vertical layout")
-        col.prop(properties, "total_window_width")
-        col.prop(properties, "window_window_distance")
-        col.prop(properties, "generate_pillar")
-        col.prop(properties, "pillar_width")
-        col.prop(properties, "window_pillar_distance")
-
-        row = layout.row(align=True)
-        row.operator("pbg.generate_building", text="Generate")
+        col.prop(properties, "floor_first_offset")
+        col.prop(properties, "floor_separator_include")
+        col.prop(properties, "floor_separator_width")
+        col.prop(properties, "floor_separator_height")
     # end draw
 # end PBGToolbarPanel
 
 
-class PBGToolbarSettingsPanel(Panel):
+class PBGToolbarLayoutPanel(Panel):
     # TODO: docstring
-    bl_label = "Settings"
+    bl_label = "Layout Settings"
     bl_category = "PBG"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS"
@@ -165,7 +153,52 @@ class PBGToolbarSettingsPanel(Panel):
 
     def draw(self, context):
         layout = self.layout
+        properties = context.scene.PBGPropertyGroup
+
         col = layout.column(align=True)
-        col.label(text="đšćčž moe moe kyun :3")
+        # TODO: move window_width to separate window panel
+        col.prop(properties, "window_width")
+        col.prop(properties, "distance_window_window")
+        col.prop(properties, "distance_window_pillar")
     # end draw
-# end PBGToolbarPanel
+# end PBGLayoutPanel
+
+
+class PBGToolbarPillarPanel(Panel):
+    # TODO: docstring
+    bl_label = "Pillar Settings"
+    bl_category = "PBG"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        properties = context.scene.PBGPropertyGroup
+
+        col = layout.column(align=True)
+        col.prop(properties, "generate_pillar")
+        col.prop(properties, "pillar_width")
+        col.prop(properties, "pillar_depth")
+        col.prop(properties, "pillar_chamfer")
+        col.prop(properties, "pillar_offset_height")
+        col.prop(properties, "pillar_offset_size")
+        col.prop(properties, "pillar_include_floor_separator")
+    # end draw
+# end PBGPillarPanel
+
+
+class PBGToolbarGeneratePanel(Panel):
+    # TODO: docstring
+    bl_label = "Generate"
+    bl_category = "PBG"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row(align=True)
+        row.operator("pbg.generate_building", text="Generate")
+    # end draw
+# end PBGGeneratePanel

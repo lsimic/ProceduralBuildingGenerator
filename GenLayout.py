@@ -32,11 +32,11 @@ class ParamsLayout:
     def from_ui():
         properties = bpy.context.scene.PBGPropertyGroup
         params = ParamsLayout(
-            properties.total_window_width,
-            properties.window_window_distance,
+            properties.window_width,
+            properties.distance_window_window,
             properties.generate_pillar,
             properties.pillar_width,
-            properties.window_pillar_distance
+            properties.distance_window_pillar
         )
         return params
     # end from_ui

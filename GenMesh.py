@@ -30,17 +30,17 @@ class ParamsGeneral:
     def from_ui():
         properties = bpy.context.scene.PBGPropertyGroup
         params = ParamsGeneral(
-            properties.width,
-            properties.depth,
-            properties.chamfer_size,
-            properties.wedge_depth,
-            properties.wedge_width,
+            properties.building_width,
+            properties.building_depth,
+            properties.building_chamfer,
+            properties.building_wedge_depth,
+            properties.building_wedge_width,
             properties.floor_count,
             properties.floor_height,
-            properties.first_floor_offset,
-            properties.separator_height,
-            properties.separator_width,
-            properties.separator_between_floors
+            properties.floor_first_offset,
+            properties.floor_separator_height,
+            properties.floor_separator_width,
+            properties.floor_separator_include
         )
         return params
     # end from_ui
@@ -69,9 +69,9 @@ class ParamsPillar:
             properties.pillar_width,
             properties.pillar_depth,
             properties.pillar_chamfer,
-            properties.pillar_offset,
+            properties.pillar_offset_height,
             properties.pillar_offset_size,
-            properties.pillar_horizontal_separator
+            properties.pillar_include_floor_separator
         )
         return params
     # end from_ui
