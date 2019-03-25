@@ -6,7 +6,7 @@ import mathutils
 from . import Constants
 
 
-class GenerateSectionParams:
+class ParamsSection:
     """
     Params for generate_section() function.
 
@@ -44,7 +44,7 @@ class GenerateSectionParams:
     # end __init__
 
     # TODO: load params from ui here...
-    # def from_ui(self):
+    # TODO: def from_ui(self):
 # end GenerateSectionParams
 
 
@@ -60,7 +60,7 @@ class SectionElement:
         width (float): width of the element
         height (float): height of the element
     """
-    def __init__(self, element_type, width, height):
+    def __init__(self, element_type: str, width: float, height: float):
         self.element_type = element_type
         self.width = width
         self.height = height
@@ -68,13 +68,13 @@ class SectionElement:
 # end SectionElement
 
 
-class GenerateSectionParamsFactory:
+class ParamsSectionFactory:
     # TODO: docstring
     # possibly remove this class and move the generating methods somewhere else?
 
     @staticmethod
     def horizontal_separator_params():
-        params = GenerateSectionParams(
+        params = ParamsSection(
             s_min_size=0.05,
             s_max_size=0.1,
             m_min_size=0.2,
@@ -91,7 +91,7 @@ class GenerateSectionParamsFactory:
 
     @staticmethod
     def horizontal_separator_params_normalized():
-        params = GenerateSectionParams(
+        params = ParamsSection(
             s_min_size=0.05,
             s_max_size=0.1,
             m_min_size=0.2,
@@ -108,7 +108,7 @@ class GenerateSectionParamsFactory:
 
     @staticmethod
     def horizontal_separator_params_large():
-        params = GenerateSectionParams(
+        params = ParamsSection(
             s_min_size=0.05,
             s_max_size=0.1,
             m_min_size=0.2,
@@ -124,7 +124,7 @@ class GenerateSectionParamsFactory:
 # GenerateSectionParamsFactory
 
 
-def generate_section_mesh(sequence, height, width):
+def gen_section_mesh(sequence: list, height: float, width: float) -> bpy.types.Mesh:
     """
     Generates a mesh from the given list of sectionElements.
 
@@ -185,12 +185,12 @@ def generate_section_mesh(sequence, height, width):
 # end generate_section_mesh
 
 
-def generate_section(params):
+def gen_section_element_list(params_section: ParamsSection) -> list:
     """
     Generates a list of SectionElements based on the supplied params.
 
     Args:
-        params (GenerateSectionParams): object containing the parameters
+        params_section (ParamsSection): object containing the parameters
 
     Returns, list of SectionElement:
         A list of SectionElement objects.
@@ -200,16 +200,16 @@ def generate_section(params):
     sequence = list()
 
     # generate first element
-    e_width = random.uniform(params.s_min_size, params.s_max_size)
-    e_height = random.uniform(params.s_min_size, params.s_max_size)
+    e_width = random.uniform(params_section.s_min_size, params_section.s_max_size)
+    e_height = random.uniform(params_section.s_min_size, params_section.s_max_size)
     element = SectionElement("square", e_width, e_height)
     remaining_width -= e_width
     remaining_height -= e_height
     sequence.append(element)
 
     # generate last element
-    e_width = random.uniform(params.s_min_size, params.s_max_size)
-    e_height = random.uniform(params.s_min_size, params.s_max_size)
+    e_width = random.uniform(params_section.s_min_size, params_section.s_max_size)
+    e_height = random.uniform(params_section.s_min_size, params_section.s_max_size)
     element = SectionElement("square", e_width, e_height)
     remaining_width -= e_width
     remaining_height -= e_height
@@ -220,50 +220,50 @@ def generate_section(params):
     # no matter if the circle element would become distorted as a result.
     while remaining_height > 0 and remaining_width > 0:
         # pick a pseudo-random element while making sure we do not get an element which would be too big
-        if remaining_height > params.l_min_size:
+        if remaining_height > params_section.l_min_size:
             rand = random.uniform(0, 1)
-        elif remaining_height > params.m_min_size:
-            rand = random.uniform(0, params.mc_limit)
+        elif remaining_height > params_section.m_min_size:
+            rand = random.uniform(0, params_section.mc_limit)
         else:
-            rand = random.uniform(0, params.sc_limit)
+            rand = random.uniform(0, params_section.sc_limit)
         # end if
 
         # generate correct element
-        if rand < params.sc_limit:
-            if params.s_max_size >= remaining_height or params.s_max_size >= remaining_width:
+        if rand < params_section.sc_limit:
+            if params_section.s_max_size >= remaining_height or params_section.s_max_size >= remaining_width:
                 e_width = remaining_width
                 e_height = remaining_height
             else:
-                e_width = random.uniform(params.s_min_size, params.s_max_size)
-                e_height = random.uniform(params.s_min_size, params.s_max_size)
+                e_width = random.uniform(params_section.s_min_size, params_section.s_max_size)
+                e_height = random.uniform(params_section.s_min_size, params_section.s_max_size)
             # end if
 
-            if rand < params.ss_limit:
+            if rand < params_section.ss_limit:
                 element = SectionElement("square", e_width, e_height)
             else:
                 element = SectionElement("circle", e_width, e_height)
             # end if
-        elif rand < params.mc_limit:
-            if params.m_max_size >= remaining_height or params.m_max_size >= remaining_width:
+        elif rand < params_section.mc_limit:
+            if params_section.m_max_size >= remaining_height or params_section.m_max_size >= remaining_width:
                 e_width = remaining_width
                 e_height = remaining_height
             else:
-                e_width = random.uniform(params.m_min_size, params.m_max_size)
-                e_height = random.uniform(params.m_min_size, params.m_max_size)
+                e_width = random.uniform(params_section.m_min_size, params_section.m_max_size)
+                e_height = random.uniform(params_section.m_min_size, params_section.m_max_size)
             # end if
 
-            if rand < params.ms_limit:
+            if rand < params_section.ms_limit:
                 element = SectionElement("square", e_width, e_height)
             else:
                 element = SectionElement("circle", e_width, e_height)
             # end if
         else:
-            if params.l_max_size >= remaining_height or params.l_max_size >= remaining_width:
+            if params_section.l_max_size >= remaining_height or params_section.l_max_size >= remaining_width:
                 e_width = remaining_width
                 e_height = remaining_height
             else:
-                e_width = random.uniform(params.l_min_size, params.l_max_size)
-                e_height = random.uniform(params.l_min_size, params.l_max_size)
+                e_width = random.uniform(params_section.l_min_size, params_section.l_max_size)
+                e_height = random.uniform(params_section.l_min_size, params_section.l_max_size)
             # end if
 
             element = SectionElement("square", e_width, e_height)
@@ -277,4 +277,4 @@ def generate_section(params):
         sequence.insert(len(sequence)-1, element)
     # end while
     return sequence
-# end generate_section
+# end generate_section_element_list

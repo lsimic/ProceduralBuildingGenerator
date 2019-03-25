@@ -23,7 +23,7 @@ def vec_from_verts(vert_start, vert_end):
 # end vec_from_verts
 
 
-def extrude_along_edges(section_mesh, layout_verts, is_loop):
+def extrude_along_edges(section_mesh: bpy.types.Mesh, footprint: list, is_loop: bool) -> bpy.types.Mesh:
     # TODO: docstring
 
     # load the section mesh into bmesh
@@ -34,7 +34,7 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
     angle_previous = 0
     scale_previous = 1
     vec_0 = mathutils.Vector((0.0, 1.0, 0.0))
-    layout_vert_count = len(layout_verts)
+    layout_vert_count = len(footprint)
 
     # this will get overridden during the first iteration, and it's not used in the first iteration
     geom_initial = separator_bmesh.verts[:] + separator_bmesh.edges[:]
@@ -44,23 +44,23 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
         # calculate the vectors needed to determine the normal vector, used for scaling and rotating the section loop
         if i == 0:
             if is_loop:
-                vec_prev = vec_from_verts(layout_verts[i], layout_verts[layout_vert_count - 1])
-                vec_next = vec_from_verts(layout_verts[i], layout_verts[i + 1])
+                vec_prev = vec_from_verts(footprint[i], footprint[layout_vert_count - 1])
+                vec_next = vec_from_verts(footprint[i], footprint[i + 1])
             else:
-                vec_next = vec_from_verts(layout_verts[i], layout_verts[i + 1])
-                vec_prev = vec_from_verts(layout_verts[i + 1], layout_verts[i])
+                vec_next = vec_from_verts(footprint[i], footprint[i + 1])
+                vec_prev = vec_from_verts(footprint[i + 1], footprint[i])
             # end if
         elif i == (layout_vert_count - 1):
             if is_loop:
-                vec_prev = vec_from_verts(layout_verts[i], layout_verts[i-1])
-                vec_next = vec_from_verts(layout_verts[i], layout_verts[0])
+                vec_prev = vec_from_verts(footprint[i], footprint[i-1])
+                vec_next = vec_from_verts(footprint[i], footprint[0])
             else:
-                vec_prev = vec_from_verts(layout_verts[i], layout_verts[i - 1])
-                vec_next = vec_from_verts(layout_verts[i - 1], layout_verts[i])
+                vec_prev = vec_from_verts(footprint[i], footprint[i - 1])
+                vec_next = vec_from_verts(footprint[i - 1], footprint[i])
             # end if
         else:
-            vec_prev = vec_from_verts(layout_verts[i], layout_verts[i - 1])
-            vec_next = vec_from_verts(layout_verts[i], layout_verts[i + 1])
+            vec_prev = vec_from_verts(footprint[i], footprint[i - 1])
+            vec_next = vec_from_verts(footprint[i], footprint[i + 1])
         # end if
 
         # normalize the vectors
@@ -92,11 +92,11 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
         if i == 0:
             mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
             verts_to_transform = separator_bmesh.verts
-            bmesh.ops.translate(separator_bmesh, vec=layout_verts[i], verts=verts_to_transform, space=mat_loc)
+            bmesh.ops.translate(separator_bmesh, vec=footprint[i], verts=verts_to_transform, space=mat_loc)
         else:
-            mat_loc = mathutils.Matrix.Translation((-layout_verts[i - 1][0], -layout_verts[i - 1][1],
-                                                    -layout_verts[i - 1][2]))
-            vec_extrude = vec_from_verts(layout_verts[i-1], layout_verts[i])
+            mat_loc = mathutils.Matrix.Translation((-footprint[i - 1][0], -footprint[i - 1][1],
+                                                    -footprint[i - 1][2]))
+            vec_extrude = vec_from_verts(footprint[i-1], footprint[i])
             edges_to_extrude = [ele for ele in geom_last if isinstance(ele, bmesh.types.BMEdge)]
             ret_extrude = bmesh.ops.extrude_edge_only(separator_bmesh, edges=edges_to_extrude, use_select_history=True)
             verts_to_transform = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
@@ -105,7 +105,7 @@ def extrude_along_edges(section_mesh, layout_verts, is_loop):
         # end if
 
         # set up location/space matrix and rotation matrix
-        mat_loc = mathutils.Matrix.Translation((-layout_verts[i][0], -layout_verts[i][1], -layout_verts[i][2]))
+        mat_loc = mathutils.Matrix.Translation((-footprint[i][0], -footprint[i][1], -footprint[i][2]))
         mat_rot = mathutils.Matrix.Rotation(angle_to_transform, 3, "Z")
 
         # apply rotation, set the result of the operation as the last geometry to be used in next iteration
