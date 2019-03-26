@@ -53,13 +53,14 @@ class ParamsPillar:
     # offset_size - size of the offset
     # offset - position of the offset
     def __init__(self, pillar_width, pillar_depth, pillar_chamfer, pillar_offset_height,
-                 pillar_offset_size, pillar_include_floor_separator):
+                 pillar_offset_size, pillar_include_floor_separator, pillar_include_first_floor):
         self.pillar_width = pillar_width
         self.pillar_depth = pillar_depth
         self.pillar_chamfer = pillar_chamfer
         self.pillar_offset_height = pillar_offset_height
         self.pillar_offset_size = pillar_offset_size
         self.pillar_include_floor_separator = pillar_include_floor_separator
+        self.pillar_include_first_floor = pillar_include_first_floor
     # end __init__
 
     @staticmethod
@@ -71,7 +72,8 @@ class ParamsPillar:
             properties.pillar_chamfer,
             properties.pillar_offset_height,
             properties.pillar_offset_size,
-            properties.pillar_include_floor_separator
+            properties.pillar_include_floor_separator,
+            properties.pillar_include_first_floor,
         )
         return params
     # end from_ui
@@ -134,7 +136,6 @@ def gen_mesh_pillar(context: bpy.types.Context, params_pillar: ParamsPillar, par
                     floor_separator_mesh, pillar_positions):
     # TODO: docstring
     # TODO: improve pillar generation,
-    # TODO: generate extruded sections separately from the pillars and copy them around if necessary...
     pillar_section_bmesh = bmesh.new()
 
     if params_pillar.pillar_include_floor_separator:
@@ -219,6 +220,41 @@ def gen_mesh_pillar(context: bpy.types.Context, params_pillar: ParamsPillar, par
         pillar_section_bmesh.from_mesh(m)
     # end if
 
+    # initial move on Z, set counter
+    if params_pillar.pillar_include_first_floor:
+        vec_trans = (0.0, 0.0, params_general.floor_first_offset)
+        i = 0
+    else:
+        vec_trans = (0.0, 0.0, params_general.floor_height + params_general.floor_first_offset)
+        i = 1
+    # end if
+    bmesh.ops.translate(pillar_section_bmesh, vec=vec_trans, verts=pillar_section_bmesh.verts)
+
+    # duplicate number of floors - 1 times, move each time for n*floor_height.
+    geom = pillar_section_bmesh.verts[:] + pillar_section_bmesh.edges[:] + pillar_section_bmesh.faces[:]
+    while i < params_general.floor_count:
+        ret_dup = bmesh.ops.duplicate(pillar_section_bmesh, geom=geom)
+        verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        bmesh.ops.translate(pillar_section_bmesh, verts=verts_to_translate, vec=(0.0, 0.0, params_general.floor_height))
+        geom = ret_dup["geom"]
+        i += 1
+    # end while
+
+    # if we have pillar on first floor, append a line so it goes to the bottom
+    if params_pillar.pillar_include_first_floor:
+        mesh_filler_verts = list()
+        mesh_filler_edges = list()
+        mesh_filler_verts.append((0.0, 0.0, 0.0))
+        mesh_filler_verts.append((0.0, 0.0, params_general.floor_first_offset))
+        mesh_filler_edges.append((0, 1))
+        m = bpy.data.meshes.new("PBGPillarMesh")
+        m.from_pydata(mesh_filler_verts, mesh_filler_edges, [])
+        pillar_section_bmesh.from_mesh(m)
+    # end if
+
+    # remove doubles before extruding
+    bmesh.ops.remove_doubles(pillar_section_bmesh, verts=pillar_section_bmesh.verts, dist=0.0001)
+
     # create the horizontal layout for extruding along
     layout = list()
     layout.append((-0.5 * params_pillar.pillar_width, 0.0, 0.0))
@@ -237,9 +273,6 @@ def gen_mesh_pillar(context: bpy.types.Context, params_pillar: ParamsPillar, par
     # end if
     layout.append((0.5 * params_pillar.pillar_width, 0.0, 0.0))
 
-    # remove doubles before extruding
-    bmesh.ops.remove_doubles(pillar_section_bmesh, verts=pillar_section_bmesh.verts, dist=0.0001)
-
     # convert to mesh, extrude along, free bmesh, then populate with extruded
     pillar_section_mesh = bpy.data.meshes.new("PBGPillarSection")
     pillar_section_bmesh.to_mesh(pillar_section_mesh)
@@ -247,21 +280,6 @@ def gen_mesh_pillar(context: bpy.types.Context, params_pillar: ParamsPillar, par
     pillar_extruded = Utils.extrude_along_edges(pillar_section_mesh, layout, False)
     pillar_bmesh = bmesh.new()
     pillar_bmesh.from_mesh(pillar_extruded)
-
-    # move up on Z for floor height + first_floor_offset
-    bmesh.ops.translate(pillar_bmesh, vec=(0.0, 0.0, params_general.floor_height + params_general.floor_first_offset),
-                        verts=pillar_bmesh.verts)
-
-    # duplicate number of floors - 1 times, move each time for n*floor_height.
-    geom = pillar_bmesh.verts[:] + pillar_bmesh.edges[:] + pillar_bmesh.faces[:]
-    i = 1
-    while i < params_general.floor_count:
-        ret_dup = bmesh.ops.duplicate(pillar_bmesh, geom=geom)
-        verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
-        bmesh.ops.translate(pillar_bmesh, verts=verts_to_translate, vec=(0.0, 0.0, params_general.floor_height))
-        geom = ret_dup["geom"]
-        i += 1
-    # end while
 
     # duplicate and rotate appropriately based on coordinates and rotation
     geom_initial = pillar_bmesh.verts[:] + pillar_bmesh.edges[:] + pillar_bmesh.faces[:]

@@ -109,6 +109,11 @@ class PBGPropertyGroup(PropertyGroup):
         name="Include floor separator",
         default=True
     )
+
+    pillar_include_first_floor = BoolProperty(
+        name="Include first floor",
+        default=True
+    )
 # end PBGPropertyGroup
 
 
@@ -184,6 +189,7 @@ class PBGToolbarPillarPanel(Panel):
         col.prop(properties, "pillar_offset_height")
         col.prop(properties, "pillar_offset_size")
         col.prop(properties, "pillar_include_floor_separator")
+        col.prop(properties, "pillar_include_first_floor")
     # end draw
 # end PBGPillarPanel
 
