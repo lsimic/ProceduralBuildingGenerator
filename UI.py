@@ -1,5 +1,5 @@
 from bpy.types import Panel, PropertyGroup
-from bpy.props import FloatProperty, BoolProperty
+from bpy.props import FloatProperty, BoolProperty, EnumProperty, IntProperty
 
 
 class PBGPropertyGroup(PropertyGroup):
@@ -114,6 +114,56 @@ class PBGPropertyGroup(PropertyGroup):
         name="Include first floor",
         default=True
     )
+
+    wall_types = [
+        ("FLAT", "FLAT", "", 0),
+        ("ROWS", "ROWS", "", 1)
+    ]
+
+    wall_type = EnumProperty(
+        items=wall_types,
+        default="ROWS"
+    )
+
+    wall_mortar_size = FloatProperty(
+        name="Mortar size",
+        default=0.02
+    )
+
+    wall_section_size = FloatProperty(
+        name="Brick section size",
+        default=0.06
+    )
+
+    wall_row_count = IntProperty(
+        name="Rows per floor",
+        default=10
+    )
+
+    wall_offset_size = FloatProperty(
+        name="Wall offset size",
+        default=0.1
+    )
+
+    wall_offset_type = EnumProperty(
+        items=wall_types,
+        default="ROWS"
+    )
+
+    wall_offset_mortar_size = FloatProperty(
+        name="Offset Mortar size",
+        default=0.03
+    )
+
+    wall_offset_section_size = FloatProperty(
+        name="Offset Brick section size",
+        default=0.08
+    )
+
+    wall_offset_row_count = IntProperty(
+        name="Offset Rows per floor",
+        default=3
+    )
 # end PBGPropertyGroup
 
 
@@ -192,6 +242,35 @@ class PBGToolbarPillarPanel(Panel):
         col.prop(properties, "pillar_include_first_floor")
     # end draw
 # end PBGPillarPanel
+
+
+class PBGToolbarWallPanel(Panel):
+    # TODO: docstring
+    bl_label = "Wall settings"
+    bl_category = "PBG"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        properties = context.scene.PBGPropertyGroup
+
+        col = layout.column(align=True)
+        col.label(text="Wall settings")
+        col.prop(properties, "wall_type")
+        col.prop(properties, "wall_mortar_size")
+        col.prop(properties, "wall_section_size")
+        col.prop(properties, "wall_row_count")
+
+        col.label(text="First floor offset settings")
+        col.prop(properties, "wall_offset_size")
+        col.prop(properties, "wall_offset_type")
+        col.prop(properties, "wall_offset_mortar_size")
+        col.prop(properties, "wall_offset_section_size")
+        col.prop(properties, "wall_offset_row_count")
+    # end draw
+# end PBGToolbarWallPanel
 
 
 class PBGToolbarGeneratePanel(Panel):

@@ -80,6 +80,40 @@ class ParamsPillar:
 # end ParamsPillar
 
 
+class ParamsWalls:
+    # TODO: docstring
+    def __init__(self, wall_type, wall_mortar_size, wall_section_size, wall_row_count, wall_offset_size,
+                 wall_offset_type, wall_offset_mortar_size, wall_offset_section_size, wall_offset_row_count):
+        self.wall_type = wall_type
+        self.wall_mortar_size = wall_mortar_size
+        self.wall_section_size = wall_section_size
+        self.wall_row_count = wall_row_count
+        self.wall_offset_size = wall_offset_size
+        self.wall_offset_type = wall_offset_type
+        self.wall_offset_mortar_size = wall_offset_mortar_size
+        self.wall_offset_section_size = wall_offset_section_size
+        self.wall_offset_row_count = wall_offset_row_count
+    # end init
+
+    @staticmethod
+    def from_ui():
+        properties = bpy.context.scene.PBGPropertyGroup
+        params = ParamsWalls(
+            properties.wall_type,
+            properties.wall_mortar_size,
+            properties.wall_section_size,
+            properties.wall_row_count,
+            properties.wall_offset_size,
+            properties.wall_offset_type,
+            properties.wall_offset_mortar_size,
+            properties.wall_offset_section_size,
+            properties.wall_offset_row_count
+        )
+        return params
+    # end from_ui
+# end ParamsWalls
+
+
 def gen_mesh_floor_separator(context: bpy.types.Context, params_general: ParamsGeneral, layout: list,
                              section_mesh: bpy.types.Mesh):
     # TODO: docstring
@@ -285,7 +319,6 @@ def gen_mesh_pillar(context: bpy.types.Context, params_pillar: ParamsPillar, par
     geom_initial = pillar_bmesh.verts[:] + pillar_bmesh.edges[:] + pillar_bmesh.faces[:]
 
     for pos in pillar_positions:
-        print(pos)
         # duplicate the initial pillar
         ret_dup = bmesh.ops.duplicate(pillar_bmesh, geom=geom_initial)
         verts_to_transform = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
@@ -316,38 +349,89 @@ def gen_mesh_pillar(context: bpy.types.Context, params_pillar: ParamsPillar, par
 # end generate_pillars
 
 
-def gen_mesh_wall(context: bpy.types.Context, wall_loops: list, params_general: ParamsGeneral):
+def gen_mesh_wall(context: bpy.types.Context, wall_loops: list, params_general: ParamsGeneral, params_walls: ParamsWalls):
     # TODO: docstring
-    # TODO: params class
+
+    # check for edge case without windows
     if len(wall_loops) == 1:
         is_loop = True
     else:
         is_loop = False
     # end if
 
-    i = 0
-    verts = list()
-    edges = list()
+    # generate wall mesh
+    # TODO: extract this if/else to separate function...
+    if params_walls.wall_type == "FLAT":
+        verts = list()
+        edges = list()
+        verts.append((0.0, 0.0, 0.0))
+        verts.append((0.0, 0.0, params_general.floor_height - params_general.floor_separator_height))
+        edges.append((0, 1))
+        wall_section_mesh = bpy.data.meshes.new(name="PBGWallSectionMesh")
+        wall_section_mesh.from_pydata(verts, edges, [])
+    else:
+        # generate mesh
+        wall_offset_params = GenUtils.ParamsSectionFactory.horizontal_separator_params_large()
+        wall_offset_section = GenUtils.gen_section_element_list(wall_offset_params)
+        wall_offset_mesh = GenUtils.gen_section_mesh(wall_offset_section, params_walls.wall_section_size,
+                                                     params_walls.wall_section_size)
+        # append it to new bmesh
+        bm = bmesh.new()
+        bm.from_mesh(wall_offset_mesh)
+        # remove last vert
+        bm.verts.ensure_lookup_table()
+        last_vert = bm.verts[len(bm.verts) - 1]
+        bm.verts.remove(last_vert)
+        # move up on Z axis
+        vec_trans = (0.0, 0.0, params_walls.wall_mortar_size)
+        bmesh.ops.translate(bm, vec=vec_trans, verts=bm.verts)
+        # duplicate, flip and move up on Z
+        mat_loc = mathutils.Matrix.Translation((0.0, 0.0, -params_walls.wall_mortar_size))
+        geom_to_duplicate = bm.verts[:] + bm.edges[:] + bm.faces[:]
+        ret_dup = bmesh.ops.duplicate(bm, geom=geom_to_duplicate)
+        verts_to_transform = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        bmesh.ops.scale(bm, vec=(1.0, 1.0, -1.0), space=mat_loc, verts=verts_to_transform)
+        row_height = (params_general.floor_height - params_general.floor_separator_height) / params_walls.wall_row_count
+        vec_trans = (0.0, 0.0, row_height - 2 * params_walls.wall_mortar_size)
+        bmesh.ops.translate(bm, vec=vec_trans, verts=verts_to_transform)
 
-    # TODO: more advanced method for generating walls
-    while i <= params_general.floor_count:
-        vert_start = (0.0, 0.0, params_general.floor_first_offset + i * params_general.floor_height)
-        vert_end = (0.0, 0.0, vert_start[2] + params_general.floor_height)
-        verts.append(vert_start)
-        verts.append(vert_end)
+        # create a mesh that fills the gaps...
+        verts = list()
+        edges = list()
+        verts.append((0.0, 0.0, 0.0))
+        verts.append((0.0, 0.0, params_walls.wall_mortar_size))
+        edges.append((0, 1))
+        verts.append((0.0, 0.0, row_height - params_walls.wall_mortar_size))
+        verts.append((0.0, 0.0, row_height))
+        edges.append((2, 3))
+        verts.append((0.0, params_walls.wall_section_size,
+                      params_walls.wall_section_size + params_walls.wall_mortar_size))
+        verts.append((0.0, params_walls.wall_section_size,
+                      row_height - params_walls.wall_section_size - params_walls.wall_mortar_size))
+        edges.append((4, 5))
+        filler_mesh = bpy.data.meshes.new(name="PBGWallSectionMeshFiller")
+        filler_mesh.from_pydata(verts, edges, [])
+        bm.from_mesh(filler_mesh)
 
-        edges.append((2 * i, 2 * i + 1))
-        i += 1
-    # end while
+        # duplicate bmesh geometry so it fills the whole floor.
+        i = 1
+        geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+        while i < params_walls.wall_row_count:
+            ret_dup = bmesh.ops.duplicate(bm, geom=geom)
+            verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+            bmesh.ops.translate(bm, verts=verts_to_translate, vec=(0.0, 0.0, row_height))
+            geom = ret_dup["geom"]
+            i += 1
+        # end while
 
-    wall_section_mesh = bpy.data.meshes.new(name="PBGWallSection")
-    wall_section_mesh.from_pydata(verts, edges, [])
+        # remove doubles before converting
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
 
-    # check if the object for walls already exists
-    ob = bpy.data.objects.get("PBGWalls")
-    if ob is not None:
-        context.scene.objects.unlink(ob)
-        bpy.data.objects.remove(ob)
+        # convert bmesh geometry to mesh
+        wall_section_mesh = bpy.data.meshes.new(name="PBGWallSectionMesh")
+        bm.to_mesh(wall_section_mesh)
+        bm.free()
+    # end if
 
     # TODO: find a better solution for joining meshes
     wall_bmesh = bmesh.new()
@@ -356,9 +440,31 @@ def gen_mesh_wall(context: bpy.types.Context, wall_loops: list, params_general: 
         wall_bmesh.from_mesh(mesh)
     # end for
 
+    # move the wall bmesh up on Z for floor offset
+    bmesh.ops.translate(wall_bmesh, verts=wall_bmesh.verts, vec=(0.0, 0.0, params_general.floor_first_offset))
+
+    # duplicate the wall bmesh to other floors.
+    geom = wall_bmesh.verts[:] + wall_bmesh.edges[:] + wall_bmesh.faces[:]
+    i = 0
+    while i < params_general.floor_count:
+        ret_dup = bmesh.ops.duplicate(wall_bmesh, geom=geom)
+        verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        bmesh.ops.translate(wall_bmesh, verts=verts_to_translate, vec=(0.0, 0.0, params_general.floor_height))
+        geom = ret_dup["geom"]
+        i += 1
+    # end while
+
+    # check if the object for walls already exists
+    ob = bpy.data.objects.get("PBGWalls")
+    if ob is not None:
+        context.scene.objects.unlink(ob)
+        bpy.data.objects.remove(ob)
+    # end if
+
     wall_mesh = bpy.data.meshes.new("PBGWall")
     wall_bmesh.to_mesh(wall_mesh)
     wall_bmesh.free()
+
     # link the created object to the scene
     new_obj = bpy.data.objects.new("PBGWalls", wall_mesh)
     context.scene.objects.link(new_obj)

@@ -16,6 +16,7 @@ class Generator(bpy.types.Operator):
         params_layout = GenLayout.ParamsLayout.from_ui()
         params_section = GenUtils.ParamsSectionFactory.horizontal_separator_params_large()
         params_pillar = GenMesh.ParamsPillar.from_ui()
+        params_walls = GenMesh.ParamsWalls.from_ui()
 
         footprint = GenLayout.gen_footprint(params_general)
         layout = GenLayout.gen_layout(params_layout, footprint)
@@ -25,7 +26,7 @@ class Generator(bpy.types.Operator):
 
         # generate geometry
         GenMesh.gen_mesh_floor_separator(context, params_general, footprint, section_mesh.copy())
-        GenMesh.gen_mesh_wall(context, layout["wall_layout_loops"], params_general)
+        GenMesh.gen_mesh_wall(context, layout["wall_layout_loops"], params_general, params_walls)
 
         print(params_layout.generate_pillar)
         if params_layout.generate_pillar == True:
