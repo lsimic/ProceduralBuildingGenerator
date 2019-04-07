@@ -278,3 +278,79 @@ def gen_section_element_list(params_section: ParamsSection) -> list:
     # end while
     return sequence
 # end generate_section_element_list
+
+
+def gen_wall_section_mesh(wall_type: str, wall_section_height: float, wall_section_size: float, wall_mortar_size: float,
+                          wall_row_count: float) -> bpy.types.Mesh:
+    # TODO: docstring
+    if wall_type == "FLAT":
+        verts = list()
+        edges = list()
+        verts.append((0.0, 0.0, 0.0))
+        verts.append((0.0, 0.0, wall_section_height))
+        edges.append((0, 1))
+        wall_section_mesh = bpy.data.meshes.new(name="PBGWallSectionMesh")
+        wall_section_mesh.from_pydata(verts, edges, [])
+    else:
+        # generate mesh
+        # TODO: generate this externally and pass it to function, since it's needed for walls under the windows
+        wall_offset_params = ParamsSectionFactory.horizontal_separator_params_large()
+        wall_offset_section = gen_section_element_list(wall_offset_params)
+        wall_offset_mesh = gen_section_mesh(wall_offset_section, wall_section_size, wall_section_size)
+        # append it to new bmesh
+        bm = bmesh.new()
+        bm.from_mesh(wall_offset_mesh)
+        # remove last vert
+        bm.verts.ensure_lookup_table()
+        last_vert = bm.verts[len(bm.verts) - 1]
+        bm.verts.remove(last_vert)
+        # move up on Z axis
+        vec_trans = (0.0, 0.0, wall_mortar_size)
+        bmesh.ops.translate(bm, vec=vec_trans, verts=bm.verts)
+        # duplicate, flip and move up on Z
+        mat_loc = mathutils.Matrix.Translation((0.0, 0.0, -wall_mortar_size))
+        geom_to_duplicate = bm.verts[:] + bm.edges[:] + bm.faces[:]
+        ret_dup = bmesh.ops.duplicate(bm, geom=geom_to_duplicate)
+        verts_to_transform = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        bmesh.ops.scale(bm, vec=(1.0, 1.0, -1.0), space=mat_loc, verts=verts_to_transform)
+        row_height = wall_section_height / wall_row_count
+        vec_trans = (0.0, 0.0, row_height - 2 * wall_mortar_size)
+        bmesh.ops.translate(bm, vec=vec_trans, verts=verts_to_transform)
+
+        # create a mesh that fills the gaps...
+        verts = list()
+        edges = list()
+        verts.append((0.0, 0.0, 0.0))
+        verts.append((0.0, 0.0, wall_mortar_size))
+        edges.append((0, 1))
+        verts.append((0.0, 0.0, row_height - wall_mortar_size))
+        verts.append((0.0, 0.0, row_height))
+        edges.append((2, 3))
+        verts.append((0.0, wall_section_size, wall_section_size + wall_mortar_size))
+        verts.append((0.0, wall_section_size, row_height - wall_section_size - wall_mortar_size))
+        edges.append((4, 5))
+        filler_mesh = bpy.data.meshes.new(name="PBGWallSectionMeshFiller")
+        filler_mesh.from_pydata(verts, edges, [])
+        bm.from_mesh(filler_mesh)
+
+        # duplicate bmesh geometry so it fills the whole floor.
+        i = 1
+        geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+        while i < wall_row_count:
+            ret_dup = bmesh.ops.duplicate(bm, geom=geom)
+            verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+            bmesh.ops.translate(bm, verts=verts_to_translate, vec=(0.0, 0.0, row_height))
+            geom = ret_dup["geom"]
+            i += 1
+        # end while
+
+        # remove doubles before converting
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+
+        # convert bmesh geometry to mesh
+        wall_section_mesh = bpy.data.meshes.new(name="PBGWallSectionMesh")
+        bm.to_mesh(wall_section_mesh)
+        bm.free()
+    # end if
+    return wall_section_mesh
+# end gen_wall_section_mesh

@@ -27,6 +27,7 @@ class Generator(bpy.types.Operator):
         # generate geometry
         GenMesh.gen_mesh_floor_separator(context, params_general, footprint, section_mesh.copy())
         GenMesh.gen_mesh_wall(context, layout["wall_layout_loops"], params_general, params_walls)
+        GenMesh.gen_mesh_offset_wall(context, footprint, params_general, params_walls)
 
         print(params_layout.generate_pillar)
         if params_layout.generate_pillar == True:

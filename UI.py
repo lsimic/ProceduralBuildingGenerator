@@ -132,12 +132,12 @@ class PBGPropertyGroup(PropertyGroup):
 
     wall_section_size = FloatProperty(
         name="Brick section size",
-        default=0.06
+        default=0.04
     )
 
     wall_row_count = IntProperty(
         name="Rows per floor",
-        default=10
+        default=7
     )
 
     wall_offset_size = FloatProperty(
@@ -157,7 +157,7 @@ class PBGPropertyGroup(PropertyGroup):
 
     wall_offset_section_size = FloatProperty(
         name="Offset Brick section size",
-        default=0.08
+        default=0.06
     )
 
     wall_offset_row_count = IntProperty(
