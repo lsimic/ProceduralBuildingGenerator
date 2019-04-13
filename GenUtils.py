@@ -293,7 +293,6 @@ def gen_wall_section_mesh(wall_type: str, wall_section_height: float, wall_secti
         wall_section_mesh.from_pydata(verts, edges, [])
     else:
         # generate mesh
-        # TODO: generate this externally and pass it to function, since it's needed for walls under the windows
         wall_offset_params = ParamsSectionFactory.horizontal_separator_params_large()
         wall_offset_section = gen_section_element_list(wall_offset_params)
         wall_offset_mesh = gen_section_mesh(wall_offset_section, wall_section_size, wall_section_size)

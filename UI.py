@@ -40,7 +40,7 @@ class PBGPropertyGroup(PropertyGroup):
         default=3
     )
 
-    floor_count = FloatProperty(
+    floor_count = IntProperty(
         name="Number of floors",
         default=2
     )
@@ -164,6 +164,43 @@ class PBGPropertyGroup(PropertyGroup):
         name="Offset Rows per floor",
         default=3
     )
+
+    window_height = FloatProperty(
+        name="Window total height",
+        default=1.0
+    )
+
+    window_offset = FloatProperty(
+        name="Window offset",
+        default=0.5
+    )
+
+    window_under_types = [
+        ("WALL", "WALL", "", 0),
+        ("PILLARS", "PILLARS", "", 1),
+        ("SIMPLE", "SIMPLE", "", 2),
+        ("SINE", "SINE", "", 3)
+    ]
+
+    windows_under_type = EnumProperty(
+        items=window_under_types,
+        default="WALL"
+    )
+
+    windows_under_width = FloatProperty(
+        name="under window offset width",
+        default=0.1
+    )
+
+    windows_under_height = FloatProperty(
+        name="Under Window offset height",
+        default=0.1
+    )
+
+    windows_under_depth = FloatProperty(
+        name="under Window offset depth",
+        default=0.05
+    )
 # end PBGPropertyGroup
 
 
@@ -211,8 +248,6 @@ class PBGToolbarLayoutPanel(Panel):
         properties = context.scene.PBGPropertyGroup
 
         col = layout.column(align=True)
-        # TODO: move window_width to separate window panel
-        col.prop(properties, "window_width")
         col.prop(properties, "distance_window_window")
         col.prop(properties, "distance_window_pillar")
     # end draw
@@ -271,6 +306,32 @@ class PBGToolbarWallPanel(Panel):
         col.prop(properties, "wall_offset_row_count")
     # end draw
 # end PBGToolbarWallPanel
+
+
+class PBGToolbarWindowPanel(Panel):
+    bl_label = "Window Settings"
+    bl_category = "PBG"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        properties = context.scene.PBGPropertyGroup
+
+        col = layout.column(align=True)
+        col.label(text="Overall window dimensions")
+        col.prop(properties, "window_width")
+        col.prop(properties, "window_height")
+        col.prop(properties, "window_offset")
+
+        col.label(text="Under windows area")
+        col.prop(properties, "windows_under_type")
+        col.prop(properties, "windows_under_width")
+        col.prop(properties, "windows_under_height")
+        col.prop(properties, "windows_under_depth")
+    # end draw
+# end PBGToolbarWindowPanel
 
 
 class PBGToolbarGeneratePanel(Panel):

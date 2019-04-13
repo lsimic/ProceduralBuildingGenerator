@@ -25,6 +25,7 @@ def register():
     bpy.utils.register_class(UI.PBGToolbarLayoutPanel)
     bpy.utils.register_class(UI.PBGToolbarPillarPanel)
     bpy.utils.register_class(UI.PBGToolbarWallPanel)
+    bpy.utils.register_class(UI.PBGToolbarWindowPanel)
     bpy.utils.register_class(UI.PBGToolbarGeneratePanel)
     bpy.utils.register_class(Generator.Generator)
 
@@ -36,5 +37,6 @@ def unregister():
     bpy.utils.unregister_class(UI.PBGToolbarLayoutPanel)
     bpy.utils.unregister_class(UI.PBGToolbarPillarPanel)
     bpy.utils.unregister_class(UI.PBGToolbarWallPanel)
+    bpy.utils.unregister_class(UI.PBGToolbarWindowPanel)
     bpy.utils.unregister_class(UI.PBGToolbarGeneratePanel)
     bpy.utils.unregister_class(Generator.Generator)

@@ -114,6 +114,49 @@ class ParamsWalls:
 # end ParamsWalls
 
 
+class ParamsWindows:
+    def __init__(self, window_total_width: float, window_total_height: float, window_vertical_offset: float):
+        self.window_total_width = window_total_width
+        self.window_total_height = window_total_height
+        self.window_vertical_offset = window_vertical_offset
+    # end __init__
+
+    @staticmethod
+    def from_ui():
+        properties = bpy.context.scene.PBGPropertyGroup
+        params = ParamsWindows(
+            properties.window_width,
+            properties.window_height,
+            properties.window_offset
+        )
+        return params
+    # end from_ui
+# end ParamsWindows
+
+
+class ParamsWindowsUnder:
+    def __init__(self, windows_under_type: str, windows_under_width: float, windows_under_height: float,
+                 windows_under_depth: float):
+        self.windows_under_type = windows_under_type
+        self.windows_under_width = windows_under_width
+        self.windows_under_height = windows_under_height
+        self.windows_under_depth = windows_under_depth
+    # end __init__
+
+    @staticmethod
+    def from_ui():
+        properties = bpy.context.scene.PBGPropertyGroup
+        params = ParamsWindowsUnder(
+            properties.windows_under_type,
+            properties.windows_under_width,
+            properties.windows_under_height,
+            properties.windows_under_depth
+        )
+        return params
+    # end from_ui
+# end ParamsWindowsUnder
+
+
 def gen_mesh_floor_separator(context: bpy.types.Context, params_general: ParamsGeneral, layout: list,
                              section_mesh: bpy.types.Mesh):
     # TODO: docstring
@@ -167,7 +210,7 @@ def gen_mesh_floor_separator(context: bpy.types.Context, params_general: ParamsG
 
 
 def gen_mesh_pillar(context: bpy.types.Context, params_pillar: ParamsPillar, params_general: ParamsGeneral,
-                    floor_separator_mesh, pillar_positions):
+                    floor_separator_mesh, pillar_positions: list):
     # TODO: docstring
     # TODO: improve pillar generation,
     pillar_section_bmesh = bmesh.new()
@@ -349,7 +392,8 @@ def gen_mesh_pillar(context: bpy.types.Context, params_pillar: ParamsPillar, par
 # end generate_pillars
 
 
-def gen_mesh_wall(context: bpy.types.Context, wall_loops: list, params_general: ParamsGeneral, params_walls: ParamsWalls):
+def gen_mesh_wall(context: bpy.types.Context, wall_loops: list, params_general: ParamsGeneral,
+                  params_walls: ParamsWalls, wall_section_mesh: bpy.types.Mesh):
     # TODO: docstring
 
     # check for edge case without windows
@@ -359,11 +403,6 @@ def gen_mesh_wall(context: bpy.types.Context, wall_loops: list, params_general: 
         is_loop = False
     # end if
 
-    # generate wall mesh
-    wall_section_height = params_general.floor_height - params_general.floor_separator_height
-    wall_section_mesh = GenUtils.gen_wall_section_mesh(params_walls.wall_type, wall_section_height,
-                                                       params_walls.wall_section_size, params_walls.wall_mortar_size,
-                                                       params_walls.wall_row_count)
     wall_bmesh = bmesh.new()
     # TODO: add a cut if there is no special element below/above windows,
     # TODO: so it could be appended to same mesh to keep nice and clean geometry
@@ -443,3 +482,76 @@ def gen_mesh_offset_wall(context: bpy.types.Context, wall_loop: list, params_gen
     new_obj = bpy.data.objects.new("PBGOffset", mesh)
     context.scene.objects.link(new_obj)
 # end gen_mesh_offset_wall
+
+
+def gen_mesh_windows_under(context: bpy.types.Context, window_positions: list, params_general: ParamsGeneral,
+                           params_windows: ParamsWindows, params_window_under: ParamsWindowsUnder,
+                           wall_section_mesh: bpy.types.Mesh):
+    # generate the mesh, centered, lowest point at 0
+    windows_under_bmesh = bmesh.new()
+    if params_window_under.windows_under_type == "WALL":
+        # start with the wall mesh
+        windows_under_bmesh.from_mesh(wall_section_mesh)
+        # bisect it on offset height, remove the outer geometry
+        geom = windows_under_bmesh.verts[:] + windows_under_bmesh.edges[:] + windows_under_bmesh.faces[:]
+        plane_co = (0.0, 0.0, params_windows.window_vertical_offset)
+        plane_no = (0.0, 0.0, 1.0)
+        bmesh.ops.bisect_plane(windows_under_bmesh, geom=geom, clear_outer=True, plane_co=plane_co, plane_no=plane_no)
+        # move it on x axis half the width
+        vec_trans = (-0.5 * params_windows.window_total_width, 0.0, 0.0)
+        bmesh.ops.translate(windows_under_bmesh, vec=vec_trans, verts=windows_under_bmesh.verts)
+        # extrude on x axis, to fill width
+        vec_ext = (params_windows.window_total_width, 0.0, 0.0)
+        ret_extrude = bmesh.ops.extrude_edge_only(windows_under_bmesh, edges=windows_under_bmesh.edges,
+                                                  use_select_history=True)
+        verts_to_translate = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        bmesh.ops.translate(windows_under_bmesh, verts=verts_to_translate, vec=vec_ext)
+    else:
+        # TODO: handle this
+        x = 1  # remove this later... this is used for python not to shit itself over an empty else statement
+    # end if
+
+    # recalculate normals
+    bmesh.ops.recalc_face_normals(windows_under_bmesh, faces=windows_under_bmesh.faces)
+
+    # move on Z for offset
+    vec_trans = (0.0, 0.0, params_general.floor_first_offset)
+    bmesh.ops.translate(windows_under_bmesh, verts=windows_under_bmesh.verts, vec=vec_trans)
+    # duplicate for each floor
+    geom = windows_under_bmesh.verts[:] + windows_under_bmesh.edges[:] + windows_under_bmesh.faces[:]
+    for i in range(0, params_general.floor_count):
+        ret_dup = bmesh.ops.duplicate(windows_under_bmesh, geom=geom)
+        verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        bmesh.ops.translate(windows_under_bmesh, verts=verts_to_translate, vec=(0.0, 0.0, params_general.floor_height))
+        geom = ret_dup["geom"]
+    # end for
+
+    # duplicate for each window
+    geom_initial = windows_under_bmesh.verts[:] + windows_under_bmesh.edges[:] + windows_under_bmesh.faces[:]
+    for pos in window_positions:
+        # duplicate the initial mesh
+        ret_dup = bmesh.ops.duplicate(windows_under_bmesh, geom=geom_initial)
+        verts_to_transform = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        # translate it to the desired position
+        bmesh.ops.translate(windows_under_bmesh, vec=(pos[0], pos[1], 0.0), verts=verts_to_transform)
+        # initialize the center point and rotation matrix
+        mat_loc = mathutils.Matrix.Translation((-pos[0], -pos[1], 0.0))
+        mat_rot = mathutils.Matrix.Rotation(pos[2], 3, "Z")
+        # rotate it at the desired position
+        bmesh.ops.rotate(windows_under_bmesh, cent=(0, 0, 0), matrix=mat_rot, verts=verts_to_transform, space=mat_loc)
+    # end for
+    bmesh.ops.delete(windows_under_bmesh, geom=geom_initial, context=1)
+
+    # convert to mesh and create object
+    windows_under_mesh = bpy.data.meshes.new("PBGWindowsUnderMesh")
+    windows_under_bmesh.to_mesh(windows_under_mesh)
+    windows_under_bmesh.free()
+    ob = bpy.data.objects.get("PBGWindowsUnder")
+    if ob is not None:
+        context.scene.objects.unlink(ob)
+        bpy.data.objects.remove(ob)
+
+    # link the created object to the scene
+    new_obj = bpy.data.objects.new("PBGWindowsUnder", windows_under_mesh)
+    context.scene.objects.link(new_obj)
+# end gen_mesh_windows_under
