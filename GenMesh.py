@@ -136,11 +136,12 @@ class ParamsWindows:
 
 class ParamsWindowsUnder:
     def __init__(self, windows_under_type: str, windows_under_width: float, windows_under_height: float,
-                 windows_under_depth: float):
+                 windows_under_depth: float, windows_under_inset_depth: float):
         self.windows_under_type = windows_under_type
         self.windows_under_width = windows_under_width
         self.windows_under_height = windows_under_height
         self.windows_under_depth = windows_under_depth
+        self.windows_under_inset_depth = windows_under_inset_depth
     # end __init__
 
     @staticmethod
@@ -150,7 +151,8 @@ class ParamsWindowsUnder:
             properties.windows_under_type,
             properties.windows_under_width,
             properties.windows_under_height,
-            properties.windows_under_depth
+            properties.windows_under_depth,
+            properties.windows_under_inset_depth
         )
         return params
     # end from_ui
@@ -507,11 +509,47 @@ def gen_mesh_windows_under(context: bpy.types.Context, window_positions: list, p
         verts_to_translate = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
         bmesh.ops.translate(windows_under_bmesh, verts=verts_to_translate, vec=vec_ext)
     else:
-        # TODO: handle this
-        x = 1  # remove this later... this is used for python not to shit itself over an empty else statement
+        # make the cube, it is same for all types (SINE, SIMPLE, PILLARS)
+        # first loop, append to bmesh...
+        verts = list()
+        verts.append((-0.5*params_windows.window_total_width, 0.0, 0.0))
+        verts.append((-0.5*params_windows.window_total_width, 0.0, params_windows.window_vertical_offset))
+        verts.append((0.5*params_windows.window_total_width, 0.0, params_windows.window_vertical_offset))
+        verts.append((0.5*params_windows.window_total_width, 0.0, 0.0))
+        m = bpy.data.meshes.new("PBGWindowsUnderMesh")
+        m.from_pydata(verts, [(0, 1), (1, 2), (2, 3), (3, 0)], [])
+        windows_under_bmesh.from_mesh(m)
+        # extrude on y forwards
+        vec_ext = (0.0, params_window_under.windows_under_depth, 0.0)
+        ret_extrude = bmesh.ops.extrude_edge_only(windows_under_bmesh, edges=windows_under_bmesh.edges,
+                                                  use_select_history=True)
+        verts_to_translate = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        bmesh.ops.translate(windows_under_bmesh, verts=verts_to_translate, vec=vec_ext)
+        # extrude, scale down so it fits the width and height
+        scale_x = (params_windows.window_total_width -
+                   2*params_window_under.windows_under_width)/params_windows.window_total_width
+        scale_z = (params_windows.window_vertical_offset -
+                   2*params_window_under.windows_under_height)/params_windows.window_vertical_offset
+        edges_to_extrude = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMEdge)]
+        ret_extrude = bmesh.ops.extrude_edge_only(windows_under_bmesh, edges=edges_to_extrude, use_select_history=True)
+        verts_to_scale = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        mat_loc = mathutils.Matrix.Translation((0.0, -params_window_under.windows_under_depth,
+                                                -0.5*params_windows.window_vertical_offset))
+        bmesh.ops.scale(windows_under_bmesh, space=mat_loc, verts=verts_to_scale, vec=(scale_x, 0, scale_z))
+        # extrude inwards
+        edges_to_extrude = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMEdge)]
+        ret_extrude = bmesh.ops.extrude_edge_only(windows_under_bmesh, edges=edges_to_extrude, use_select_history=True)
+        verts_to_translate = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        vec_ext = (0.0, -params_window_under.windows_under_inset_depth, 0.0)
+        bmesh.ops.translate(windows_under_bmesh, verts=verts_to_translate, vec=vec_ext)
+        # make a face
+        bmesh.ops.contextual_create(windows_under_bmesh, geom=ret_extrude["geom"])
+
+        # TODO: generate sine/pillar/simple mesh to fill the geometry...
     # end if
 
     # recalculate normals
+    # TODO: normals are sometimes recalculated differently when height changes while using "WALL" type.
     bmesh.ops.recalc_face_normals(windows_under_bmesh, faces=windows_under_bmesh.faces)
 
     # move on Z for offset

@@ -201,6 +201,11 @@ class PBGPropertyGroup(PropertyGroup):
         name="under Window offset depth",
         default=0.05
     )
+
+    windows_under_inset_depth = FloatProperty(
+        name="under Window inset depth",
+        default=0.1
+    )
 # end PBGPropertyGroup
 
 
@@ -330,6 +335,7 @@ class PBGToolbarWindowPanel(Panel):
         col.prop(properties, "windows_under_width")
         col.prop(properties, "windows_under_height")
         col.prop(properties, "windows_under_depth")
+        col.prop(properties, "windows_under_inset_depth")
     # end draw
 # end PBGToolbarWindowPanel
 
