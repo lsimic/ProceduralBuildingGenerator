@@ -1,6 +1,7 @@
 import bmesh
 import bpy
 import mathutils
+import math
 from . import Utils
 from . import GenUtils
 
@@ -136,12 +137,23 @@ class ParamsWindows:
 
 class ParamsWindowsUnder:
     def __init__(self, windows_under_type: str, windows_under_width: float, windows_under_height: float,
-                 windows_under_depth: float, windows_under_inset_depth: float):
+                 windows_under_depth: float, windows_under_inset_depth: float, windows_under_amplitude: float,
+                 windows_under_period_count: int, windows_under_simple_width: float, windows_under_simple_depth: float,
+                 windows_under_pillar_base_diameter: float, windows_under_pillar_base_height: float,
+                 windows_under_pillar_min_diameter: float, windows_under_pillar_max_diameter: float):
         self.windows_under_type = windows_under_type
         self.windows_under_width = windows_under_width
         self.windows_under_height = windows_under_height
         self.windows_under_depth = windows_under_depth
         self.windows_under_inset_depth = windows_under_inset_depth
+        self.windows_under_amplitude = windows_under_amplitude
+        self.windows_under_period_count = windows_under_period_count
+        self.windows_under_simple_width = windows_under_simple_width
+        self.windows_under_simple_depth = windows_under_simple_depth
+        self.windows_under_pillar_base_diameter = windows_under_pillar_base_diameter
+        self.windows_under_pillar_base_height = windows_under_pillar_base_height
+        self.windows_under_pillar_min_diameter = windows_under_pillar_min_diameter
+        self.windows_under_pillar_max_diameter = windows_under_pillar_max_diameter
     # end __init__
 
     @staticmethod
@@ -152,7 +164,15 @@ class ParamsWindowsUnder:
             properties.windows_under_width,
             properties.windows_under_height,
             properties.windows_under_depth,
-            properties.windows_under_inset_depth
+            properties.windows_under_inset_depth,
+            properties.windows_under_amplitude,
+            properties.windows_under_period_count,
+            properties.windows_under_simple_width,
+            properties.windows_under_simple_depth,
+            properties.windows_under_pillar_base_diameter,
+            properties.windows_under_pillar_base_height,
+            properties.windows_under_pillar_min_diameter,
+            properties.windows_under_pillar_max_diameter
         )
         return params
     # end from_ui
@@ -546,6 +566,185 @@ def gen_mesh_windows_under(context: bpy.types.Context, window_positions: list, p
         bmesh.ops.contextual_create(windows_under_bmesh, geom=ret_extrude["geom"])
 
         # TODO: generate sine/pillar/simple mesh to fill the geometry...
+        if params_window_under.windows_under_type in {"CYCLOID", "SINE"}:
+            period_width = (params_windows.window_total_width
+                            - 2*params_window_under.windows_under_width)/params_window_under.windows_under_period_count
+            # TODO. when moving the circle/sine, the highest point should be on the edge of the hole.
+            bm = bmesh.new()
+            # create a single vert, spin it to make half a circle
+            if params_window_under.windows_under_type == "CYCLOID":
+                v_co_x = -0.5*params_windows.window_total_width + params_window_under.windows_under_width
+                v_co_y = params_window_under.windows_under_depth
+                v_co_z = params_window_under.windows_under_height
+                bmesh.ops.create_vert(bm, co=(v_co_x, v_co_y, v_co_z))
+                geom = bm.verts[:]
+                bmesh.ops.spin(bm, geom=geom, angle=math.radians(180), steps=12, axis=(0.0, 0.0, 1.0),
+                               cent=(v_co_x + period_width/2, v_co_y, v_co_z))
+                sf = (params_window_under.windows_under_amplitude*2)/period_width
+                mat_loc = mathutils.Matrix.Translation((0.0, -params_window_under.windows_under_depth, 0.0))
+                bmesh.ops.scale(bm, vec=(1.0, sf, 1.0), space=mat_loc, verts=bm.verts)
+            else:
+                co_start_x = -0.5*params_windows.window_total_width + params_window_under.windows_under_width
+                co_y = params_window_under.windows_under_depth - 0.5*params_window_under.windows_under_amplitude
+                verts = list()
+                edges = list()
+                n = 12
+                for i in range(0, n+1):
+                    v_co_x = co_start_x + period_width*(i/n)
+                    v_co_y = co_y + math.sin(2*math.pi*(i/n))*params_window_under.windows_under_amplitude*0.5
+                    verts.append((v_co_x, v_co_y, params_window_under.windows_under_height))
+                    if i > 0:
+                        edges.append((i-1, i))
+                # end for
+                m = bpy.data.meshes.new("PBGWindowsUnderMeshSine")
+                m.from_pydata(verts, edges, [])
+                bm.from_mesh(m)
+            # end if
+            # extrude on z
+            ret_ext = bmesh.ops.extrude_edge_only(bm, edges=bm.edges, use_select_history=True)
+            verts_to_translate = [ele for ele in ret_ext["geom"] if isinstance(ele, bmesh.types.BMVert)]
+            vec_trans = (0.0, 0.0, params_windows.window_vertical_offset - 2*params_window_under.windows_under_height)
+            mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+            bmesh.ops.translate(bm, verts=verts_to_translate, vec=vec_trans, space=mat_loc)
+            # duplicate and move on x
+            geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+            mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+            for i in range(1, params_window_under.windows_under_period_count):
+                ret_dup = bmesh.ops.duplicate(bm, geom=geom)
+                verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+                bmesh.ops.translate(bm, vec=(i*period_width, 0.0, 0.0), space=mat_loc, verts=verts_to_translate)
+            # remove doubles
+            bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+            # append to original bmesh
+            # TODO: find a better way to join these two bmeshes
+            sine_cycle_mesh = bpy.data.meshes.new("PBGWindowsUnderMeshSineCycle")
+            bm.to_mesh(sine_cycle_mesh)
+            bm.free()
+            windows_under_bmesh.from_mesh(sine_cycle_mesh)
+        elif params_window_under.windows_under_type == "PILLARS":
+            # create a single pillar section(quite a lot of work here)
+            params = GenUtils.ParamsSectionFactory.horizontal_separator_params_large()
+            sequence = GenUtils.gen_section_element_list(params)
+            mesh = GenUtils.gen_section_mesh(sequence, params_window_under.windows_under_pillar_base_height,
+                                             0.5*params_window_under.windows_under_pillar_base_diameter
+                                             - 0.5*params_window_under.windows_under_pillar_min_diameter)
+            bm = bmesh.new()
+            bm.from_mesh(mesh)
+            bm.verts.ensure_lookup_table()
+            last_vert = bm.verts[len(bm.verts) - 1]
+            bm.verts.remove(last_vert)
+            # move, on y and z, so the middle is on the bottom and goes through the center.
+            vec_trans = (0.0, 0.5 * params_window_under.windows_under_pillar_min_diameter,
+                         params_windows.window_vertical_offset - 2 * params_window_under.windows_under_height
+                         - params_window_under.windows_under_pillar_base_height)
+            mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+            bmesh.ops.translate(bm, vec=vec_trans, space=mat_loc, verts=bm.verts)
+            # generate pillar mesh
+            verts = list()
+            edges = list()
+            start_y = vec_trans[1]
+            start_z = vec_trans[2]
+            end_z = 0.5*params_windows.window_vertical_offset - params_window_under.windows_under_height
+            end_y = 0.5*params_window_under.windows_under_pillar_max_diameter
+            dist_z = start_z - end_z
+            dist_y = end_y - start_y
+            n = 5
+            for i in range(0, n+1):
+                v_co_z = start_z - (dist_z/n)*i
+                v_co_y = start_y + math.sin((0.5*math.pi*i)/n)*dist_y
+                verts.append((0.0, v_co_y, v_co_z))
+                if i > 0:
+                    edges.append((i-1, i))
+            # end for
+            # append to bmesh
+            m = bpy.data.meshes.new("PBGWindowsUnderMeshPillar")
+            m.from_pydata(verts, edges, [])
+            bm.from_mesh(m)
+            # duplicate and mirror
+            geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+            ret_dup = bmesh.ops.duplicate(bm, geom=geom)
+            mat_loc = mathutils.Matrix.Translation((0.0, 0.0, -end_z))
+            verts_to_scale = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+            bmesh.ops.scale(bm, verts=verts_to_scale, space=mat_loc, vec=(1.0, 1.0, -1.0))
+            # remove doubles and spin
+            bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+            geom_spin = bm.verts[:] + bm.edges[:]
+            ret_spin = bmesh.ops.spin(bm, geom=geom_spin, angle=math.radians(360), steps=16, axis=(0.0, 0.0, 1.0),
+                                      cent=(0.0, 0.0, 0.0))
+            # calculate the pillar positions
+            width = params_windows.window_total_width - 2*params_window_under.windows_under_width
+            pillar_count = int(width/params_window_under.windows_under_pillar_base_diameter)
+            total_pillar_width = width/pillar_count
+            # duplicate original geometry and translate
+            geom_initial = bm.verts[:] + bm.edges[:] + bm.faces[:]
+            mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+            print(width)
+            print(pillar_count)
+            print(total_pillar_width)
+            for i in range(0, pillar_count):
+                v_co_x = -0.5*width + total_pillar_width*(i+0.5)
+                ret_dup = bmesh.ops.duplicate(bm, geom=geom_initial)
+                verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+                # TODO: fix y coordinate of this trans vector
+                v_co_y = 0.5*(params_window_under.windows_under_depth + (params_window_under.windows_under_depth
+                                                                         - params_window_under.windows_under_inset_depth))
+                vec_trans = ((v_co_x, v_co_y, params_window_under.windows_under_height))
+                bmesh.ops.translate(bm, vec=vec_trans, verts=verts_to_translate, space=mat_loc)
+            # remove original geometry
+            bmesh.ops.delete(bm, geom=geom_initial, context=1)
+            # append to original bmesh
+            # TODO: find a better way to join these two bmeshes
+            pillar_mesh = bpy.data.meshes.new("PBGWindowsUnderMeshPillar")
+            bm.to_mesh(pillar_mesh)
+            bm.free()
+            windows_under_bmesh.from_mesh(pillar_mesh)
+        else:
+            # create layout for extruding
+            layout = list()
+            size_x = params_windows.window_total_width - 2*params_window_under.windows_under_width
+            size_y = params_windows.window_vertical_offset - 2*params_window_under.windows_under_height
+            layout.append((0.5 * size_x, 0.5 * size_y, 0.0))
+            layout.append((-0.5 * size_x, 0.5 * size_y, 0.0))
+            layout.append((-0.5 * size_x, -0.5 * size_y, 0.0))
+            layout.append((0.5 * size_x, -0.5 * size_y, 0.0))
+            # create a section and extrude it in x-y plane
+            params = GenUtils.ParamsSectionFactory.horizontal_separator_params_large()
+            sequence = GenUtils.gen_section_element_list(params)
+            mesh = GenUtils.gen_section_mesh(sequence, params_window_under.windows_under_simple_depth,
+                                             params_window_under.windows_under_simple_width)
+            bm = bmesh.new()
+            bm.from_mesh(mesh)
+            bm.verts.ensure_lookup_table()
+            last_vert = bm.verts[len(bm.verts) - 1]
+            bm.verts.remove(last_vert)
+            bm.to_mesh(mesh)
+            extruded = Utils.extrude_along_edges(mesh, layout, True)
+            simple_bmesh = bmesh.new()
+            simple_bmesh.from_mesh(extruded)
+            # create the filler face
+            verts = list()
+            v_co_x = 0.5 * size_x - params_window_under.windows_under_simple_width
+            v_co_y = 0.5 * size_y - params_window_under.windows_under_simple_width
+            verts.append((v_co_x, v_co_y, params_window_under.windows_under_simple_depth))
+            verts.append((-v_co_x, v_co_y, params_window_under.windows_under_simple_depth))
+            verts.append((-v_co_x, -v_co_y, params_window_under.windows_under_simple_depth))
+            verts.append((v_co_x, -v_co_y, params_window_under.windows_under_simple_depth))
+            m = bpy.data.meshes.new("PBGWindowsUnderMeshSimpleFillFace")
+            m.from_pydata(verts, [(0, 1), (1, 2), (2, 3), (3, 0)], [(0, 1, 2, 3)])
+            simple_bmesh.from_mesh(m)
+            bmesh.ops.remove_doubles(simple_bmesh, verts=simple_bmesh.verts, dist=0.0001)
+            # rotate, move and offset on y
+            mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+            mat_rot = mathutils.Matrix.Rotation(math.radians(-90), 3, "X")
+            # rotate it, move to the desired position, append to main bmesh
+            bmesh.ops.rotate(simple_bmesh, cent=(0, 0, 0), matrix=mat_rot, verts=simple_bmesh.verts, space=mat_loc)
+            vec_trans = (0.0, params_window_under.windows_under_depth, 0.5*params_windows.window_vertical_offset)
+            bmesh.ops.translate(simple_bmesh, vec=vec_trans, space=mat_loc, verts=simple_bmesh.verts)
+            # TODO: find a better way to join these two bmeshes
+            simple_mesh = bpy.data.meshes.new("PBGWindowsUnderMeshSimple")
+            simple_bmesh.to_mesh(simple_mesh)
+            simple_bmesh.free()
+            windows_under_bmesh.from_mesh(simple_mesh)
     # end if
 
     # recalculate normals

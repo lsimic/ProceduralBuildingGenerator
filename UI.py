@@ -179,7 +179,8 @@ class PBGPropertyGroup(PropertyGroup):
         ("WALL", "WALL", "", 0),
         ("PILLARS", "PILLARS", "", 1),
         ("SIMPLE", "SIMPLE", "", 2),
-        ("SINE", "SINE", "", 3)
+        ("SINE", "SINE", "", 3),
+        ("CYCLOID", "CYCLOID", "", 4)
     ]
 
     windows_under_type = EnumProperty(
@@ -205,6 +206,46 @@ class PBGPropertyGroup(PropertyGroup):
     windows_under_inset_depth = FloatProperty(
         name="under Window inset depth",
         default=0.1
+    )
+
+    windows_under_amplitude = FloatProperty(
+        name="under Window amplitude",
+        default=0.05
+    )
+
+    windows_under_period_count = IntProperty(
+        name="under Window period count",
+        default=8
+    )
+
+    windows_under_simple_width = FloatProperty(
+        name="Under window simple width",
+        default=0.04
+    )
+
+    windows_under_simple_depth = FloatProperty(
+        name="Under window simple depth",
+        default=0.03
+    )
+
+    windows_under_pillar_base_diameter = FloatProperty(
+        name="Under window pillar base diameter",
+        default=0.08
+    )
+
+    windows_under_pillar_base_height = FloatProperty(
+        name="Under window pillar base height",
+        default=0.04
+    )
+
+    windows_under_pillar_min_diameter = FloatProperty(
+        name="Under window pillar min diameter",
+        default=0.05
+    )
+
+    windows_under_pillar_max_diameter = FloatProperty(
+        name="Under window pillar max diameter",
+        default=0.08
     )
 # end PBGPropertyGroup
 
@@ -336,6 +377,20 @@ class PBGToolbarWindowPanel(Panel):
         col.prop(properties, "windows_under_height")
         col.prop(properties, "windows_under_depth")
         col.prop(properties, "windows_under_inset_depth")
+
+        col.label(text="Sine/Cycloid params")
+        col.prop(properties, "windows_under_amplitude")
+        col.prop(properties, "windows_under_period_count")
+
+        col.label(text="Simple params")
+        col.prop(properties, "windows_under_simple_width")
+        col.prop(properties, "windows_under_simple_depth")
+
+        col.label(text="Pillar params")
+        col.prop(properties, "windows_under_pillar_base_diameter")
+        col.prop(properties, "windows_under_pillar_base_height")
+        col.prop(properties, "windows_under_pillar_min_diameter")
+        col.prop(properties, "windows_under_pillar_max_diameter")
     # end draw
 # end PBGToolbarWindowPanel
 
