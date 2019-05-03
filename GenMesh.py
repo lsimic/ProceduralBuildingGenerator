@@ -1,3 +1,23 @@
+# ##### BEGIN GPL LICENSE BLOCK #####
+#
+#  Procedural building generator
+#  Copyright (C) 2019 Luka Simic
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 3
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, see <https://www.gnu.org/licenses/>.
+#
+# ##### END GPL LICENSE BLOCK #####
+
 import bmesh
 import bpy
 import mathutils
@@ -688,7 +708,7 @@ def gen_mesh_windows_under(context: bpy.types.Context, window_positions: list, p
                 # TODO: fix y coordinate of this trans vector
                 v_co_y = 0.5*(params_window_under.windows_under_depth + (params_window_under.windows_under_depth
                                                                          - params_window_under.windows_under_inset_depth))
-                vec_trans = ((v_co_x, v_co_y, params_window_under.windows_under_height))
+                vec_trans = (v_co_x, v_co_y, params_window_under.windows_under_height)
                 bmesh.ops.translate(bm, vec=vec_trans, verts=verts_to_translate, space=mat_loc)
             # remove original geometry
             bmesh.ops.delete(bm, geom=geom_initial, context=1)
