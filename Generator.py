@@ -45,16 +45,21 @@ class Generator(bpy.types.Operator):
         section_element_list = GenUtils.gen_section_element_list(params_section)
         section_mesh = GenUtils.gen_section_mesh(section_element_list, params_general.floor_separator_height,
                                                  params_general.floor_separator_width)
-        wall_section_height = params_general.floor_height - params_general.floor_separator_height
+        if params_general.floor_separator_include == True:
+            wall_section_height = params_general.floor_height - params_general.floor_separator_height
+        else:
+            wall_section_height = params_general.floor_height
+        # end if
         wall_section_mesh = GenUtils.gen_wall_section_mesh(params_walls.wall_type, wall_section_height,
                                                            params_walls.wall_section_size,
                                                            params_walls.wall_mortar_size,
                                                            params_walls.wall_row_count)
 
         # generate geometry
-        GenMesh.gen_mesh_floor_separator(context, params_general, footprint, section_mesh.copy())
-        GenMesh.gen_mesh_wall(context, layout["wall_layout_loops"], params_general, params_walls,
-                              wall_section_mesh.copy())
+        if params_general.floor_separator_include == True:
+            GenMesh.gen_mesh_floor_separator(context, params_general, footprint, section_mesh.copy())
+        # end if
+        GenMesh.gen_mesh_wall(context, layout["wall_layout_loops"], params_general, wall_section_mesh.copy())
         GenMesh.gen_mesh_offset_wall(context, footprint, params_general, params_walls)
         GenMesh.gen_mesh_windows_under(context, layout["window_positions"], params_general, params_windows,
                                        params_windows_under, wall_section_mesh)

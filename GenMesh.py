@@ -219,20 +219,13 @@ def gen_mesh_floor_separator(context: bpy.types.Context, params_general: ParamsG
     # duplicate the separators for each floor, and translate them, or translate straight to top based on params.
     i = 1
     while i <= params_general.floor_count:
-        if params_general.floor_separator_include is False:
-            ret_dup = bmesh.ops.duplicate(separators_bmesh, geom=geom_to_duplicate)
-            verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
-            vec_trans = (0.0, 0.0, params_general.floor_count * params_general.floor_height)
-            bmesh.ops.translate(separators_bmesh, verts=verts_to_translate, vec=vec_trans)
-            break
-        else:
-            ret_dup = bmesh.ops.duplicate(separators_bmesh, geom=geom_to_duplicate)
-            verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
-            vec_trans = (0.0, 0.0, params_general.floor_height)
-            bmesh.ops.translate(separators_bmesh, verts=verts_to_translate, vec=vec_trans)
-            geom_to_duplicate = [ele for ele in ret_dup["geom"] if (isinstance(ele, bmesh.types.BMVert)
-                                                                    or isinstance(ele, bmesh.types.BMEdge)
-                                                                    or isinstance(ele, bmesh.types.BMFace))]
+        ret_dup = bmesh.ops.duplicate(separators_bmesh, geom=geom_to_duplicate)
+        verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        vec_trans = (0.0, 0.0, params_general.floor_height)
+        bmesh.ops.translate(separators_bmesh, verts=verts_to_translate, vec=vec_trans)
+        geom_to_duplicate = [ele for ele in ret_dup["geom"] if (isinstance(ele, bmesh.types.BMVert)
+                                                                or isinstance(ele, bmesh.types.BMEdge)
+                                                                or isinstance(ele, bmesh.types.BMFace))]
         # end if
         i += 1
     # end while
@@ -435,7 +428,7 @@ def gen_mesh_pillar(context: bpy.types.Context, params_pillar: ParamsPillar, par
 
 
 def gen_mesh_wall(context: bpy.types.Context, wall_loops: list, params_general: ParamsGeneral,
-                  params_walls: ParamsWalls, wall_section_mesh: bpy.types.Mesh):
+                  wall_section_mesh: bpy.types.Mesh):
     # TODO: docstring
 
     # check for edge case without windows
