@@ -188,20 +188,19 @@ def gen_section_mesh(sequence: list, height: float, width: float) -> bpy.types.M
         i += 1
     # end while
 
-    section_mesh = bpy.data.meshes.new(name="PBGSection")
-    section_mesh.from_pydata(verts, edges, [])
-    section_mesh.update()
-    section_bmesh = bmesh.new()
-    section_bmesh.from_mesh(section_mesh)
+    m = bpy.data.meshes.new(name="PBGSection")
+    m.from_pydata(verts, edges, [])
+    m.update()
+    bm = bmesh.new()
+    bm.from_mesh(m)
 
     # scale the mesh so it has the desired width and height.
     mat_loc = mathutils.Matrix.Translation((0, 0, 0))
-    bmesh.ops.scale(section_bmesh, vec=(1.0, width, height), space=mat_loc, verts=section_bmesh.verts)
+    bmesh.ops.scale(bm, vec=(1.0, width, height), space=mat_loc, verts=bm.verts)
 
-    section_bmesh.to_mesh(section_mesh)
-    section_bmesh.free()
-
-    return section_mesh
+    bm.to_mesh(m)
+    bm.free()
+    return m
 # end generate_section_mesh
 
 

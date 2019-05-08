@@ -27,7 +27,6 @@ import bpy
 def vec_from_verts(vert_start, vert_end):
     """
     Generates a vector from given two points
-
     Args:
         vert_start: starting point in 3D space
         vert_end: ending point in 3D space
@@ -43,12 +42,40 @@ def vec_from_verts(vert_start, vert_end):
 # end vec_from_verts
 
 
-def extrude_along_edges(section_mesh: bpy.types.Mesh, footprint: list, is_loop: bool) -> bpy.types.Mesh:
-    # TODO: docstring
+def vert_check_intersect(vert, range_start, range_end) -> bool:
+    """
+    Checks whether a giver vert is located in a rectangle given by two other verts
+    Checks in the x-y plane only.
+    Order of verts is not important
+    Args:
+        vert: vert to check
+        range_start: first vert that defines the rectangle
+        range_end: second vert that defines the rectangle
+    Returns:
+        bool indicating if the vert intersects
+    """
+    if (((range_start[0] <= vert[0] <= range_end[0]) or (range_end[0] <= vert[0] <= range_start[0])) and
+            ((range_start[1] <= vert[1] <= range_end[1]) or (range_end[1] <= vert[1] <= range_start[1]))):
+        return True
+    else:
+        return False
+    # end if
+# end vert_check_range
 
+
+def extrude_along_edges(section_mesh: bpy.types.Mesh, footprint: list, is_loop: bool) -> bpy.types.Mesh:
+    """
+    Takes a given mesh, and extrudes it along a given list of verts
+    Args:
+        section_mesh: mesh to be extruded along
+        footprint: list of verts (must be ordered) along which the mesh will be extruded
+        is_loop: bool, indicating whether to connect first and last vert.
+    Returns:
+        The extruded mesh.
+    """
     # load the section mesh into bmesh
-    separator_bmesh = bmesh.new()
-    separator_bmesh.from_mesh(section_mesh)
+    bm = bmesh.new()
+    bm.from_mesh(section_mesh)
 
     # set initial values
     angle_previous = 0
@@ -57,8 +84,8 @@ def extrude_along_edges(section_mesh: bpy.types.Mesh, footprint: list, is_loop: 
     layout_vert_count = len(footprint)
 
     # this will get overridden during the first iteration, and it's not used in the first iteration
-    geom_initial = separator_bmesh.verts[:] + separator_bmesh.edges[:]
-    geom_last = separator_bmesh.verts[:] + separator_bmesh.edges[:]
+    geom_initial = bm.verts[:] + bm.edges[:]
+    geom_last = bm.verts[:] + bm.edges[:]
     i = 0
     while i < layout_vert_count:
         # calculate the vectors needed to determine the normal vector, used for scaling and rotating the section loop
@@ -111,16 +138,16 @@ def extrude_along_edges(section_mesh: bpy.types.Mesh, footprint: list, is_loop: 
         # for all other iterations, extrude the mesh to the current vert position
         if i == 0:
             mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
-            verts_to_transform = separator_bmesh.verts
-            bmesh.ops.translate(separator_bmesh, vec=footprint[i], verts=verts_to_transform, space=mat_loc)
+            verts_to_transform = bm.verts
+            bmesh.ops.translate(bm, vec=footprint[i], verts=verts_to_transform, space=mat_loc)
         else:
             mat_loc = mathutils.Matrix.Translation((-footprint[i - 1][0], -footprint[i - 1][1],
                                                     -footprint[i - 1][2]))
             vec_extrude = vec_from_verts(footprint[i-1], footprint[i])
             edges_to_extrude = [ele for ele in geom_last if isinstance(ele, bmesh.types.BMEdge)]
-            ret_extrude = bmesh.ops.extrude_edge_only(separator_bmesh, edges=edges_to_extrude, use_select_history=True)
+            ret_extrude = bmesh.ops.extrude_edge_only(bm, edges=edges_to_extrude, use_select_history=True)
             verts_to_transform = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
-            bmesh.ops.translate(separator_bmesh, verts=verts_to_transform, vec=vec_extrude, space=mat_loc)
+            bmesh.ops.translate(bm, verts=verts_to_transform, vec=vec_extrude, space=mat_loc)
             geom_last = ret_extrude["geom"]
         # end if
 
@@ -129,17 +156,17 @@ def extrude_along_edges(section_mesh: bpy.types.Mesh, footprint: list, is_loop: 
         mat_rot = mathutils.Matrix.Rotation(angle_to_transform, 3, "Z")
 
         # apply rotation, set the result of the operation as the last geometry to be used in next iteration
-        bmesh.ops.rotate(separator_bmesh, cent=(0, 0, 0), matrix=mat_rot, verts=verts_to_transform, space=mat_loc)
+        bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=mat_rot, verts=verts_to_transform, space=mat_loc)
 
         # apply scale and rotation by chaining bmesh operations.
-        bmesh.ops.scale(separator_bmesh, vec=(scale_to_transform, scale_to_transform, 1), space=mat_loc,
+        bmesh.ops.scale(bm, vec=(scale_to_transform, scale_to_transform, 1), space=mat_loc,
                         verts=verts_to_transform)
 
         # if this is the last iteration, bridge the loop between first and last section loop
         if (i == layout_vert_count - 1) and is_loop:
             edges_initial = [ele for ele in geom_initial if isinstance(ele, bmesh.types.BMEdge)]
             edges_last = [ele for ele in geom_last if isinstance(ele, bmesh.types.BMEdge)]
-            bmesh.ops.bridge_loops(separator_bmesh, edges=edges_initial+edges_last)
+            bmesh.ops.bridge_loops(bm, edges=edges_initial+edges_last)
 
         # set the previous scale and angle variables to be used in the next iteration
         angle_previous = angle_desired
@@ -150,9 +177,9 @@ def extrude_along_edges(section_mesh: bpy.types.Mesh, footprint: list, is_loop: 
     # end while
 
     # create the mesh and return it
-    mesh = bpy.data.meshes.new("Mesh")
-    bmesh.ops.recalc_face_normals(separator_bmesh, faces=separator_bmesh.faces)
-    separator_bmesh.to_mesh(mesh)
-    separator_bmesh.free()
-    return mesh
+    m = bpy.data.meshes.new("Mesh")
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(m)
+    bm.free()
+    return m
 # end generate_horizontal_separator

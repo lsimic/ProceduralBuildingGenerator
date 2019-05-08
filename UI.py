@@ -267,6 +267,11 @@ class PBGPropertyGroup(PropertyGroup):
         name="Under window pillar max diameter",
         default=0.08
     )
+
+    door_size = FloatProperty(
+        name="Door size",
+        default=2.5
+    )
 # end PBGPropertyGroup
 
 
