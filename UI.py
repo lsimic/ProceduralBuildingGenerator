@@ -272,6 +272,58 @@ class PBGPropertyGroup(PropertyGroup):
         name="Door size",
         default=2.5
     )
+
+    window_above_types = [
+        ("WALL", "WALL", "", 0),
+        ("SIMPLE", "SIMPLE", "", 1),
+        ("SINE", "SINE", "", 2),
+        ("CYCLOID", "CYCLOID", "", 3)
+    ]
+
+    windows_above_type = EnumProperty(
+        items=window_above_types,
+        default="WALL"
+    )
+
+    windows_above_width = FloatProperty(
+        name="under window offset width",
+        default=0.1
+    )
+
+    windows_above_height = FloatProperty(
+        name="Under Window offset height",
+        default=0.1
+    )
+
+    windows_above_depth = FloatProperty(
+        name="under Window offset depth",
+        default=0.05
+    )
+
+    windows_above_inset_depth = FloatProperty(
+        name="under Window inset depth",
+        default=0.1
+    )
+
+    windows_above_amplitude = FloatProperty(
+        name="under Window amplitude",
+        default=0.05
+    )
+
+    windows_above_period_count = IntProperty(
+        name="under Window period count",
+        default=8
+    )
+
+    windows_above_simple_width = FloatProperty(
+        name="Under window simple width",
+        default=0.04
+    )
+
+    windows_above_simple_depth = FloatProperty(
+        name="Under window simple depth",
+        default=0.03
+    )
 # end PBGPropertyGroup
 
 
@@ -395,8 +447,22 @@ class PBGToolbarWindowPanel(Panel):
         col.prop(properties, "window_width")
         col.prop(properties, "window_height")
         col.prop(properties, "window_offset")
+    # end draw
+# end PBGToolbarWindowPanel
 
-        col.label(text="Under windows area")
+
+class PBGToolbarWindowUnderPanel(Panel):
+    bl_label = "Window Under Settings"
+    bl_category = "PBG"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        properties = context.scene.PBGPropertyGroup
+        col = layout.column(align=True)
+        col.label(text="OOverall dimensions")
         col.prop(properties, "windows_under_type")
         col.prop(properties, "windows_under_width")
         col.prop(properties, "windows_under_height")
@@ -416,6 +482,36 @@ class PBGToolbarWindowPanel(Panel):
         col.prop(properties, "windows_under_pillar_base_height")
         col.prop(properties, "windows_under_pillar_min_diameter")
         col.prop(properties, "windows_under_pillar_max_diameter")
+    # end draw
+# end PBGToolbarWindowPanel
+
+
+class PBGToolbarWindowAbovePanel(Panel):
+    bl_label = "Window Above Settings"
+    bl_category = "PBG"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        properties = context.scene.PBGPropertyGroup
+
+        col = layout.column(align=True)
+        col.label(text="Overall dimensions")
+        col.prop(properties, "windows_above_type")
+        col.prop(properties, "windows_above_width")
+        col.prop(properties, "windows_above_height")
+        col.prop(properties, "windows_above_depth")
+        col.prop(properties, "windows_above_inset_depth")
+
+        col.label(text="Sine/Cycloid params")
+        col.prop(properties, "windows_above_amplitude")
+        col.prop(properties, "windows_above_period_count")
+
+        col.label(text="Simple params")
+        col.prop(properties, "windows_above_simple_width")
+        col.prop(properties, "windows_above_simple_depth")
     # end draw
 # end PBGToolbarWindowPanel
 
