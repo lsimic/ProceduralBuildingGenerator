@@ -170,6 +170,28 @@ class ParamsWindowsAbove:
 # end ParamsWindowsAbove
 
 
+class ParamsStairs:
+    def __init__(self, layout_width: float, layout_depth: float, stair_count: int, width: float):
+        self.layout_width = layout_width
+        self.layout_depth = layout_depth
+        self.stair_count = stair_count
+        self.width = width
+    # end __init__
+
+    @staticmethod
+    def from_ui():
+        properties = bpy.context.scene.PBGPropertyGroup
+        params = ParamsStairs(
+            properties.stairs_layout_width,
+            properties.stairs_layout_depth,
+            properties.stairs_stair_count,
+            properties.stairs_width
+        )
+        return params
+    # end from_ui
+# end ParamsStairs
+
+
 def gen_mesh_floor_separator(context: bpy.types.Context, footprint: list,
                              section_mesh: bpy.types.Mesh) -> bpy.types.Object:
     """
@@ -898,3 +920,56 @@ def gen_mesh_windows_under(context: bpy.types.Context, params_general: GenLayout
     context.scene.objects.link(new_obj)
     return new_obj
 # end gen_mesh_windows_under
+
+
+def gen_mesh_stairs(context: bpy.types.Context, params_general: GenLayout.ParamsGeneral,
+                    params_footprint: GenLayout.ParamsFootprint, params_stairs: ParamsStairs):
+    # generate the profile to be extruded
+    verts = list()
+    edges = list()
+    stair_height = params_general.floor_offset / params_stairs.stair_count
+    verts.append((0, 0, params_general.floor_offset))
+    for i in range(0, params_stairs.stair_count):
+        verts.append((0, (i+1)*params_stairs.width, params_general.floor_offset-i*stair_height))
+        verts.append((0, (i+1)*params_stairs.width, params_general.floor_offset-(i+1)*stair_height))
+    for i in range(0, len(verts)-1):
+        edges.append((i, i+1))
+    m_section = bpy.data.meshes.new("PBGStairSection")
+    m_section.from_pydata(verts, edges, [])
+
+    # generate the layout
+    layout = list()
+    layout.append((-0.5*params_stairs.layout_width, 0.5*params_footprint.building_depth, 0))
+    layout.append((-0.5*params_stairs.layout_width, 0.5*params_footprint.building_depth+params_stairs.layout_depth, 0))
+    layout.append((0.5*params_stairs.layout_width, 0.5*params_footprint.building_depth+params_stairs.layout_depth, 0))
+    layout.append((0.5*params_stairs.layout_width, 0.5*params_footprint.building_depth, 0))
+
+    # extrude, create bmesh
+    m = Utils.extrude_along_edges(m_section, layout, False)
+    bm = bmesh.new()
+    bm.from_mesh(m)
+
+    # generate top filler face, append to bmesh
+    verts.clear()
+    for vert in layout:
+        verts.append((vert[0], vert[1], params_general.floor_offset))
+    m_filler_face = bpy.data.meshes.new("PBGStairFiller")
+    m_filler_face.from_pydata(verts, [(0, 1), (1, 2), (2, 3), (3, 0)], [(0, 1, 2, 3)])
+    bm.from_mesh(m_filler_face)
+
+    # remove doubles
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+
+    m = bpy.data.meshes.new("PBGStairs")
+    bm.to_mesh(m)
+    bm.free()
+    ob = bpy.data.objects.get("PBGStairs")
+    if ob is not None:
+        context.scene.objects.unlink(ob)
+        bpy.data.objects.remove(ob)
+
+    # link the created object to the scene
+    new_obj = bpy.data.objects.new("PBGStairs", m)
+    context.scene.objects.link(new_obj)
+    return new_obj
+# end gen_mesh_stairs

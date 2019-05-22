@@ -324,6 +324,27 @@ class PBGPropertyGroup(PropertyGroup):
         name="Under window simple depth",
         default=0.03
     )
+
+    stairs_layout_width = FloatProperty(
+        name="Stairs width",
+        default=9.0
+    )
+
+    stairs_layout_depth = FloatProperty(
+        name="Stairs depth",
+        default=2.0
+    )
+
+    stairs_stair_count = IntProperty(
+        name="stair count",
+        default=4
+    )
+
+    stairs_width = FloatProperty(
+        name="stair width",
+        default=0.25
+    )
+
 # end PBGPropertyGroup
 
 
@@ -512,6 +533,27 @@ class PBGToolbarWindowAbovePanel(Panel):
         col.label(text="Simple params")
         col.prop(properties, "windows_above_simple_width")
         col.prop(properties, "windows_above_simple_depth")
+    # end draw
+# end PBGToolbarWindowPanel
+
+
+class PBGToolbarStairsPanel(Panel):
+    bl_label = "Stairs Settings"
+    bl_category = "PBG"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        properties = context.scene.PBGPropertyGroup
+
+        col = layout.column(align=True)
+        col.label(text="Label")
+        col.prop(properties, "stairs_layout_width")
+        col.prop(properties, "stairs_layout_depth")
+        col.prop(properties, "stairs_count")
+        col.prop(properties, "stairs_width")
     # end draw
 # end PBGToolbarWindowPanel
 

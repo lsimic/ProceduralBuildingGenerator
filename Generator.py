@@ -41,6 +41,7 @@ class Generator(bpy.types.Operator):
         params_windows_under = GenMesh.ParamsWindowsUnder.from_ui()
         params_windows_above = GenMesh.ParamsWindowsAbove.from_ui()
         params_footprint = GenLayout.ParamsFootprint.from_ui()
+        params_stairs = GenMesh.ParamsStairs.from_ui()
         door_position = ((0.0, 0.5*params_footprint.building_depth+params_footprint.building_wedge_depth,
                           params_general.floor_offset), 0)
 
@@ -71,6 +72,8 @@ class Generator(bpy.types.Operator):
         # end if
         GenMesh.gen_mesh_wall(context, layout["wall_loops"], wall_section_mesh.copy())
         GenMesh.gen_mesh_offset_wall(context, footprint, params_general, params_walls)
+
+        GenMesh.gen_mesh_stairs(context, params_general, params_footprint, params_stairs)
 
         obj_window_under = GenMesh.gen_mesh_windows_under(context, params_general, params_windows_under, wall_section_mesh)
         apply_positions(obj_window_under, layout["window_positions"])
