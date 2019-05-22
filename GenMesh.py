@@ -192,6 +192,30 @@ class ParamsStairs:
 # end ParamsStairs
 
 
+class ParamsWindowsAround:
+    def __init__(self, section_height: float, section_width: float, pillar_width: float, inner_depth: float,
+                 outer_depth: float):
+        self.section_height = section_height
+        self.section_width = section_width
+        self.pillar_width = pillar_width
+        self.inner_depth = inner_depth
+        self.outer_depth = outer_depth
+    # end __init__
+
+    @staticmethod
+    def from_ui():
+        properties = bpy.context.scene.PBGPropertyGroup
+        params = ParamsWindowsAround(
+            properties.windows_around_section_height,
+            properties.windows_around_section_width,
+            properties.windows_around_pillar_width,
+            properties.windows_around_inner_depth,
+            properties.windows_around_outer_depth
+        )
+        return params
+    # end from_ui
+# end ParamsWindowsAround
+
 def gen_mesh_floor_separator(context: bpy.types.Context, footprint: list,
                              section_mesh: bpy.types.Mesh) -> bpy.types.Object:
     """
@@ -973,3 +997,90 @@ def gen_mesh_stairs(context: bpy.types.Context, params_general: GenLayout.Params
     context.scene.objects.link(new_obj)
     return new_obj
 # end gen_mesh_stairs
+
+
+def gen_mesh_windows_around(context: bpy.types.Context, params_general: GenLayout.ParamsGeneral,
+                            params_windows_around: ParamsWindowsAround):
+    bm = bmesh.new()
+    # create section
+    params = GenUtils.ParamsSectionFactory.horizontal_separator_params_large()
+    sequence = GenUtils.gen_section_element_list(params)
+    mesh = GenUtils.gen_section_mesh(sequence, params_windows_around.section_height,
+                                     params_windows_around.section_width)
+    # create layout
+    layout = list()
+    layout.append((-0.5 * params_general.window_width, -params_windows_around.inner_depth, 0.0))
+    layout.append((-0.5 * params_general.window_width, params_windows_around.outer_depth, 0.0))
+    layout.append((0.5 * params_general.window_width, params_windows_around.outer_depth, 0.0))
+    layout.append((0.5 * params_general.window_width, -params_windows_around.inner_depth, 0.0))
+
+    # extrude along layout
+    m = Utils.extrude_along_edges(mesh, layout, False)
+    bm.from_mesh(m)
+
+    # make filler faces
+    verts = layout.copy()
+    for vert in layout:
+        verts.append((vert[0], vert[1], params_windows_around.section_height))
+    m_faces = bpy.data.meshes.new("PBGWindowsAroundFaces")
+    edges = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4)]
+    faces = [(0, 1, 2, 3), (4, 5, 6, 7)]
+    m_faces.from_pydata(verts, edges, faces)
+    bm.from_mesh(m_faces)
+
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+
+    #  move on Z to bottom
+    vec_trans = (0.0, 0.0, params_general.window_offset)
+    mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+    bmesh.ops.translate(bm, vec=vec_trans, space=mat_loc, verts=bm.verts)
+
+    # duplicate, move on Z to top
+    geom_to_duplicate = bm.verts[:] + bm.edges[:] + bm.faces[:]
+    ret_dup = bmesh.ops.duplicate(bm, geom=geom_to_duplicate)
+    verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+    vec_trans = (0.0, 0.0, params_general.window_height - params_windows_around.section_height)
+    bmesh.ops.translate(bm, vec=vec_trans, space=mat_loc, verts=verts_to_translate)
+
+    # add cube, scale, move to position on -x, y and z
+    bm_pillars = bmesh.new()
+    ret_create = bmesh.ops.create_cube(bm_pillars, size=1.0)
+    verts_to_transform = ret_create["verts"]
+    vec_scale = (params_windows_around.pillar_width,
+                 params_windows_around.outer_depth + params_windows_around.inner_depth,
+                 params_general.window_height - 2*params_windows_around.section_height)
+    bmesh.ops.scale(bm_pillars, vec=vec_scale, space=mat_loc, verts=verts_to_transform)
+    vec_trans = (-0.5*params_general.window_width + 0.5*params_windows_around.pillar_width,
+                 0.5*(params_windows_around.outer_depth - params_windows_around.inner_depth),
+                 0.5*params_general.window_height + params_general.window_offset)
+    bmesh.ops.translate(bm_pillars, vec=vec_trans, space=mat_loc, verts=verts_to_transform)
+
+    # duplicate, move on x
+    geom_to_duplicate = bm_pillars.verts[:] + bm_pillars.edges[:] + bm_pillars.faces[:]
+    ret_dup = bmesh.ops.duplicate(bm_pillars, geom=geom_to_duplicate)
+    verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+    vec_trans = (params_general.window_width - params_windows_around.pillar_width, 0.0, 0.0)
+    bmesh.ops.translate(bm_pillars, vec=vec_trans, space=mat_loc, verts=verts_to_translate)
+
+    # join meshes
+    m_pillars = bpy.data.meshes.new("PBGWindowPillars")
+    bm_pillars.to_mesh(m_pillars)
+    bm_pillars.free()
+
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+    bm.from_mesh(m_pillars)
+
+    # create object
+    m = bpy.data.meshes.new("PBGWindowAround")
+    bm.to_mesh(m)
+    bm.free()
+    ob = bpy.data.objects.get("PBGWindowAround")
+    if ob is not None:
+        context.scene.objects.unlink(ob)
+        bpy.data.objects.remove(ob)
+
+    # link the created object to the scene
+    new_obj = bpy.data.objects.new("PBGWindowAround", m)
+    context.scene.objects.link(new_obj)
+    return new_obj
+# end gen_mesh_windows_around

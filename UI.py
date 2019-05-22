@@ -147,12 +147,12 @@ class PBGPropertyGroup(PropertyGroup):
 
     wall_mortar_size = FloatProperty(
         name="Mortar size",
-        default=0.02
+        default=0.01
     )
 
     wall_section_size = FloatProperty(
         name="Brick section size",
-        default=0.04
+        default=0.02
     )
 
     wall_row_count = IntProperty(
@@ -172,12 +172,12 @@ class PBGPropertyGroup(PropertyGroup):
 
     wall_offset_mortar_size = FloatProperty(
         name="Offset Mortar size",
-        default=0.03
+        default=0.02
     )
 
     wall_offset_section_size = FloatProperty(
         name="Offset Brick section size",
-        default=0.06
+        default=0.03
     )
 
     wall_offset_row_count = IntProperty(
@@ -187,12 +187,12 @@ class PBGPropertyGroup(PropertyGroup):
 
     window_height = FloatProperty(
         name="Window total height",
-        default=1.0
+        default=1.5
     )
 
     window_offset = FloatProperty(
         name="Window offset",
-        default=0.5
+        default=0.7
     )
 
     window_under_types = [
@@ -345,6 +345,31 @@ class PBGPropertyGroup(PropertyGroup):
         default=0.25
     )
 
+    windows_around_section_height = FloatProperty(
+        name="Window around section height",
+        default=0.15
+    )
+
+    windows_around_section_width = FloatProperty(
+        name="Window around section width",
+        default=0.1
+    )
+
+    windows_around_pillar_width = FloatProperty(
+        name="Window around pillar width",
+        default=0.1
+    )
+
+    windows_around_inner_depth = FloatProperty(
+        name="Window around inner depth",
+        default=0.05
+    )
+
+    windows_around_outer_depth = FloatProperty(
+        name="Window around outer depth",
+        default=0.03
+    )
+
 # end PBGPropertyGroup
 
 
@@ -468,6 +493,12 @@ class PBGToolbarWindowPanel(Panel):
         col.prop(properties, "window_width")
         col.prop(properties, "window_height")
         col.prop(properties, "window_offset")
+        col.label(text="Around windows")
+        col.prop(properties, "windows_around_section_height")
+        col.prop(properties, "windows_around_section_width")
+        col.prop(properties, "windows_around_pillar_width")
+        col.prop(properties, "windows_around_inner_depth")
+        col.prop(properties, "windows_around_outer_depth")
     # end draw
 # end PBGToolbarWindowPanel
 
