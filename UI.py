@@ -72,12 +72,12 @@ class PBGPropertyGroup(PropertyGroup):
 
     floor_separator_height = FloatProperty(
         name="Separator height",
-        default=0.5
+        default=0.2
     )
 
     floor_separator_width = FloatProperty(
         name="Separator width",
-        default=0.5
+        default=0.2
     )
 
     window_width = FloatProperty(
@@ -187,7 +187,7 @@ class PBGPropertyGroup(PropertyGroup):
 
     window_height = FloatProperty(
         name="Window total height",
-        default=1.5
+        default=1.7
     )
 
     window_offset = FloatProperty(
@@ -370,6 +370,31 @@ class PBGPropertyGroup(PropertyGroup):
         default=0.03
     )
 
+    window_frame_width = FloatProperty(
+        name="Window frame width",
+        default=0.03
+    )
+
+    window_frame_depth = FloatProperty(
+        name="Window frame depth",
+        default=0.03
+    )
+
+    window_ratio = FloatProperty(
+        name="Window ratio",
+        default=0.7
+    )
+
+    window_count = IntProperty(
+        name="window count",
+        default=2
+    )
+
+    window_split_top = BoolProperty(
+        name="window split top",
+        default=False
+    )
+
 # end PBGPropertyGroup
 
 
@@ -499,6 +524,12 @@ class PBGToolbarWindowPanel(Panel):
         col.prop(properties, "windows_around_pillar_width")
         col.prop(properties, "windows_around_inner_depth")
         col.prop(properties, "windows_around_outer_depth")
+        col.label(text="window frame")
+        col.prop(properties, "window_frame_width")
+        col.prop(properties, "window_frame_depth")
+        col.prop(properties, "window_ratio")
+        col.prop(properties, "window_count")
+        col.prop(properties, "window_split_top")
     # end draw
 # end PBGToolbarWindowPanel
 
@@ -583,7 +614,7 @@ class PBGToolbarStairsPanel(Panel):
         col.label(text="Label")
         col.prop(properties, "stairs_layout_width")
         col.prop(properties, "stairs_layout_depth")
-        col.prop(properties, "stairs_count")
+        col.prop(properties, "stairs_stair_count")
         col.prop(properties, "stairs_width")
     # end draw
 # end PBGToolbarWindowPanel

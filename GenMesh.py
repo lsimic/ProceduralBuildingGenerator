@@ -192,29 +192,41 @@ class ParamsStairs:
 # end ParamsStairs
 
 
-class ParamsWindowsAround:
+class ParamsWindows:
     def __init__(self, section_height: float, section_width: float, pillar_width: float, inner_depth: float,
-                 outer_depth: float):
+                 outer_depth: float, frame_width: float, frame_depth: float, window_ratio: float,
+                 window_count: int, split_top: bool):
         self.section_height = section_height
         self.section_width = section_width
         self.pillar_width = pillar_width
         self.inner_depth = inner_depth
         self.outer_depth = outer_depth
+        self.frame_width = frame_width
+        self.frame_depth = frame_depth
+        self.window_ratio = window_ratio
+        self.window_count = window_count
+        self.split_top = split_top
     # end __init__
 
     @staticmethod
     def from_ui():
         properties = bpy.context.scene.PBGPropertyGroup
-        params = ParamsWindowsAround(
+        params = ParamsWindows(
             properties.windows_around_section_height,
             properties.windows_around_section_width,
             properties.windows_around_pillar_width,
             properties.windows_around_inner_depth,
-            properties.windows_around_outer_depth
+            properties.windows_around_outer_depth,
+            properties.window_frame_width,
+            properties.window_frame_depth,
+            properties.window_ratio,
+            properties.window_count,
+            properties.window_split_top
         )
         return params
     # end from_ui
 # end ParamsWindowsAround
+
 
 def gen_mesh_floor_separator(context: bpy.types.Context, footprint: list,
                              section_mesh: bpy.types.Mesh) -> bpy.types.Object:
@@ -1000,19 +1012,19 @@ def gen_mesh_stairs(context: bpy.types.Context, params_general: GenLayout.Params
 
 
 def gen_mesh_windows_around(context: bpy.types.Context, params_general: GenLayout.ParamsGeneral,
-                            params_windows_around: ParamsWindowsAround):
+                            params_windows: ParamsWindows):
     bm = bmesh.new()
     # create section
     params = GenUtils.ParamsSectionFactory.horizontal_separator_params_large()
     sequence = GenUtils.gen_section_element_list(params)
-    mesh = GenUtils.gen_section_mesh(sequence, params_windows_around.section_height,
-                                     params_windows_around.section_width)
+    mesh = GenUtils.gen_section_mesh(sequence, params_windows.section_height,
+                                     params_windows.section_width)
     # create layout
     layout = list()
-    layout.append((-0.5 * params_general.window_width, -params_windows_around.inner_depth, 0.0))
-    layout.append((-0.5 * params_general.window_width, params_windows_around.outer_depth, 0.0))
-    layout.append((0.5 * params_general.window_width, params_windows_around.outer_depth, 0.0))
-    layout.append((0.5 * params_general.window_width, -params_windows_around.inner_depth, 0.0))
+    layout.append((-0.5 * params_general.window_width, -params_windows.inner_depth, 0.0))
+    layout.append((-0.5 * params_general.window_width, params_windows.outer_depth, 0.0))
+    layout.append((0.5 * params_general.window_width, params_windows.outer_depth, 0.0))
+    layout.append((0.5 * params_general.window_width, -params_windows.inner_depth, 0.0))
 
     # extrude along layout
     m = Utils.extrude_along_edges(mesh, layout, False)
@@ -1021,7 +1033,7 @@ def gen_mesh_windows_around(context: bpy.types.Context, params_general: GenLayou
     # make filler faces
     verts = layout.copy()
     for vert in layout:
-        verts.append((vert[0], vert[1], params_windows_around.section_height))
+        verts.append((vert[0], vert[1], params_windows.section_height))
     m_faces = bpy.data.meshes.new("PBGWindowsAroundFaces")
     edges = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4)]
     faces = [(0, 1, 2, 3), (4, 5, 6, 7)]
@@ -1039,19 +1051,19 @@ def gen_mesh_windows_around(context: bpy.types.Context, params_general: GenLayou
     geom_to_duplicate = bm.verts[:] + bm.edges[:] + bm.faces[:]
     ret_dup = bmesh.ops.duplicate(bm, geom=geom_to_duplicate)
     verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
-    vec_trans = (0.0, 0.0, params_general.window_height - params_windows_around.section_height)
+    vec_trans = (0.0, 0.0, params_general.window_height - params_windows.section_height)
     bmesh.ops.translate(bm, vec=vec_trans, space=mat_loc, verts=verts_to_translate)
 
     # add cube, scale, move to position on -x, y and z
     bm_pillars = bmesh.new()
     ret_create = bmesh.ops.create_cube(bm_pillars, size=1.0)
     verts_to_transform = ret_create["verts"]
-    vec_scale = (params_windows_around.pillar_width,
-                 params_windows_around.outer_depth + params_windows_around.inner_depth,
-                 params_general.window_height - 2*params_windows_around.section_height)
+    vec_scale = (params_windows.pillar_width,
+                 params_windows.outer_depth + params_windows.inner_depth,
+                 params_general.window_height - 2*params_windows.section_height)
     bmesh.ops.scale(bm_pillars, vec=vec_scale, space=mat_loc, verts=verts_to_transform)
-    vec_trans = (-0.5*params_general.window_width + 0.5*params_windows_around.pillar_width,
-                 0.5*(params_windows_around.outer_depth - params_windows_around.inner_depth),
+    vec_trans = (-0.5*params_general.window_width + 0.5*params_windows.pillar_width,
+                 0.5*(params_windows.outer_depth - params_windows.inner_depth),
                  0.5*params_general.window_height + params_general.window_offset)
     bmesh.ops.translate(bm_pillars, vec=vec_trans, space=mat_loc, verts=verts_to_transform)
 
@@ -1059,7 +1071,7 @@ def gen_mesh_windows_around(context: bpy.types.Context, params_general: GenLayou
     geom_to_duplicate = bm_pillars.verts[:] + bm_pillars.edges[:] + bm_pillars.faces[:]
     ret_dup = bmesh.ops.duplicate(bm_pillars, geom=geom_to_duplicate)
     verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
-    vec_trans = (params_general.window_width - params_windows_around.pillar_width, 0.0, 0.0)
+    vec_trans = (params_general.window_width - params_windows.pillar_width, 0.0, 0.0)
     bmesh.ops.translate(bm_pillars, vec=vec_trans, space=mat_loc, verts=verts_to_translate)
 
     # join meshes
@@ -1084,3 +1096,119 @@ def gen_mesh_windows_around(context: bpy.types.Context, params_general: GenLayou
     context.scene.objects.link(new_obj)
     return new_obj
 # end gen_mesh_windows_around
+
+
+def gen_mesh_windows(context: bpy.types.Context, params_general: GenLayout.ParamsGeneral,
+                     params_windows: ParamsWindows):
+    # keep windows and frame in separate bmesh?
+    bm = bmesh.new()
+    frame_width = params_general.window_width - 2*params_windows.pillar_width
+    frame_height = params_general.window_height - 2*params_windows.section_height
+    frame_window_width = frame_width / params_windows.window_count
+
+    # create section
+    params = GenUtils.ParamsSectionFactory.horizontal_separator_params_large()
+    sequence = GenUtils.gen_section_element_list(params)
+    m_section = GenUtils.gen_section_mesh(sequence, params_windows.frame_width,
+                                          params_windows.frame_depth)
+    bm_section = bmesh.new()
+    bm_section.from_mesh(m_section)
+    mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+    mat_rot = mathutils.Matrix.Rotation(math.radians(-90), 3, "X")
+    vec_trans = (0.0, -params_windows.frame_width, 0.0)
+    bmesh.ops.rotate(bm_section, cent=(0, 0, 0), matrix=mat_rot, verts=bm_section.verts, space=mat_loc)
+    bmesh.ops.translate(bm_section, vec=vec_trans, space=mat_loc, verts=bm_section.verts)
+    bm_section.to_mesh(m_section)
+    bm_section.free()
+
+    # generate single layout for top and bottom, check for splits here
+    layout_top = list()
+    layout_bottom = list()
+
+    m_bottom_glass = bpy.data.meshes.new("PBGWindowBottomGlass")
+    m_top_glass = bpy.data.meshes.new("PBGWindowTopGlass")
+    verts_bottom_glass = list()
+    verts_top_glass = list()
+
+    if params_windows.split_top == True:
+        layout_top.append((0.5 * frame_width, frame_height*params_windows.window_ratio, 0))
+        layout_top.append((0.5 * frame_width - frame_window_width, frame_height*params_windows.window_ratio, 0))
+        layout_top.append((0.5 * frame_width - frame_window_width, frame_height, 0))
+        layout_top.append((0.5 * frame_width, frame_height, 0))
+    else:
+        layout_top.append((0.5 * frame_width, frame_height * params_windows.window_ratio, 0))
+        layout_top.append((-0.5 * frame_width, frame_height * params_windows.window_ratio, 0))
+        layout_top.append((-0.5 * frame_width, frame_height, 0))
+        layout_top.append((0.5 * frame_width, frame_height, 0))
+
+    layout_bottom.append((0.5*frame_width, 0, 0))
+    layout_bottom.append((0.5*frame_width - frame_window_width, 0, 0))
+    layout_bottom.append((0.5*frame_width - frame_window_width, frame_height*params_windows.window_ratio, 0))
+    layout_bottom.append((0.5*frame_width, frame_height*params_windows.window_ratio, 0))
+
+    # create glass
+    verts_top_glass.append((layout_top[0][0] - params_windows.frame_width,
+                            layout_top[0][1] + params_windows.frame_width, 0.0))
+    verts_top_glass.append((layout_top[1][0] + params_windows.frame_width,
+                            layout_top[1][1] + params_windows.frame_width, 0.0))
+    verts_top_glass.append((layout_top[2][0] + params_windows.frame_width,
+                            layout_top[2][1] - params_windows.frame_width, 0.0))
+    verts_top_glass.append((layout_top[3][0] - params_windows.frame_width,
+                            layout_top[2][1] - params_windows.frame_width, 0.0))
+
+    verts_bottom_glass.append((layout_bottom[0][0] - params_windows.frame_width,
+                               layout_bottom[0][1] + params_windows.frame_width, 0.0))
+    verts_bottom_glass.append((layout_bottom[1][0] + params_windows.frame_width,
+                               layout_bottom[1][1] + params_windows.frame_width, 0.0))
+    verts_bottom_glass.append((layout_bottom[2][0] + params_windows.frame_width,
+                               layout_bottom[2][1] - params_windows.frame_width, 0.0))
+    verts_bottom_glass.append((layout_bottom[3][0] - params_windows.frame_width,
+                               layout_bottom[2][1] - params_windows.frame_width, 0.0))
+
+    m_top_glass.from_pydata(verts_top_glass, [(0, 1), (1, 2), (2, 3), (3, 0)], [(0, 1, 2, 3)])
+    m_bottom_glass.from_pydata(verts_bottom_glass, [(0, 1), (1, 2), (2, 3), (3, 0)], [(0, 1, 2, 3)])
+
+    # extrude along layouts
+    m_bottom = Utils.extrude_along_edges(m_section.copy(), layout_bottom, True)
+    m_top = Utils.extrude_along_edges(m_section, layout_top, True)
+
+    bm.from_mesh(m_bottom)
+    bm.from_mesh(m_bottom_glass)
+    if params_windows.split_top == True:
+        bm.from_mesh(m_top)
+        bm.from_mesh(m_top_glass)
+
+    # duplicate and translate frames
+    geom_orig = bm.verts[:] + bm.edges[:] + bm.faces[:]
+    for i in range(1, params_windows.window_count):
+        ret_dup = bmesh.ops.duplicate(bm, geom=geom_orig)
+        verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+        vec_trans = (-frame_window_width*i, 0, 0)
+        bmesh.ops.translate(bm, vec=vec_trans, verts=verts_to_translate, space=mat_loc)
+
+    if params_windows.split_top == False:
+        bm.from_mesh(m_top)
+        bm.from_mesh(m_top_glass)
+
+    # rotate window, move on z
+    mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+    vec_trans = (0.0, -params_windows.inner_depth, params_general.window_offset + params_windows.section_height)
+    mat_rot = mathutils.Matrix.Rotation(math.radians(90), 3, "X")
+    bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=mat_rot, verts=bm.verts, space=mat_loc)
+    bmesh.ops.translate(bm, vec=vec_trans, space=mat_loc, verts=bm.verts)
+
+    # create object
+    m = bpy.data.meshes.new("PBGWindow")
+    bm.to_mesh(m)
+    bm.free()
+    ob = bpy.data.objects.get("PBGWindow")
+    if ob is not None:
+        context.scene.objects.unlink(ob)
+        bpy.data.objects.remove(ob)
+
+    # link the created object to the scene
+    new_obj = bpy.data.objects.new("PBGWindow", m)
+    context.scene.objects.link(new_obj)
+    return new_obj
+# end gen_mesh_windows
