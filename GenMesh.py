@@ -228,6 +228,26 @@ class ParamsWindows:
 # end ParamsWindowsAround
 
 
+class ParamsRoof:
+    def __init__(self, offset_width: float, offset_wedge: float, height: float):
+        self.offset_width = offset_width
+        self.offset_wedge = offset_wedge
+        self.height = height
+    # end __init__
+
+    @staticmethod
+    def from_ui():
+        properties = bpy.context.scene.PBGPropertyGroup
+        params = ParamsRoof(
+            properties.roof_offset_width,
+            properties.roof_offset_wedge,
+            properties.roof_height
+        )
+        return params
+    # end from_ui
+# end ParamsRoof
+
+
 def gen_mesh_floor_separator(context: bpy.types.Context, footprint: list,
                              section_mesh: bpy.types.Mesh) -> bpy.types.Object:
     """
@@ -1212,3 +1232,117 @@ def gen_mesh_windows(context: bpy.types.Context, params_general: GenLayout.Param
     context.scene.objects.link(new_obj)
     return new_obj
 # end gen_mesh_windows
+
+
+def gen_mesh_roof(context: bpy.types.Context, params_general: GenLayout.ParamsGeneral, footprint: list,
+                  params_footprint: GenLayout.ParamsFootprint, params_roof: ParamsRoof):
+    bm_roof = bmesh.new()
+    # get verts on -x side, create edges
+    verts = list()
+    edges = list()
+    if params_footprint.building_chamfer > 0:
+        count = 4
+        edges.append((0, 1))
+        edges.append((1, 2))
+        edges.append((2, 3))
+    else:
+        count = 2
+        edges.append((0, 1))
+
+    for i in range(0, count):
+        verts.append((
+            footprint[i][0],
+            footprint[i][1],
+            params_general.floor_offset + params_general.floor_height * (1 + params_general.floor_count)
+        ))
+
+    # create mesh, append to bmesh
+    m_roof = bpy.data.meshes.new("PBGRoof")
+    m_roof.from_pydata(verts, edges, [])
+    bm_roof.from_mesh(m_roof)
+
+    # extrude, merge, move to position
+    ret_extrude = bmesh.ops.extrude_edge_only(bm_roof, edges=bm_roof.edges, use_select_history=True)
+    verts_to_scale = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
+    pos_x = 0.5*params_footprint.building_width - params_roof.offset_width
+    pos_y = 0
+    pos_z = params_general.floor_offset + params_general.floor_height * (1 + params_general.floor_count) + params_roof.height
+    mat_loc = mathutils.Matrix.Translation((pos_x, pos_y, -pos_z))
+    bmesh.ops.scale(bm_roof, space=mat_loc, verts=verts_to_scale, vec=(0.0, 0.0, 0.0))
+
+    # crate edges from first, merged and last verts
+    m_roof_filler = bpy.data.meshes.new("PBGRoofFiller")
+    verts_filler = list()
+    verts_filler.append(verts[0])
+    verts_filler.append((-pos_x, pos_y, pos_z))
+    verts_filler.append(verts[len(verts)-1])
+    m_roof_filler.from_pydata(verts_filler, [(0, 1), (1, 2)], [])
+    bm_roof_filler = bmesh.new()
+    bm_roof_filler.from_mesh(m_roof_filler)
+
+    # extrude, scale on x to 0 in x=0
+    ret_extrude = bmesh.ops.extrude_edge_only(bm_roof_filler, edges=bm_roof_filler.edges, use_select_history=True)
+    verts_to_scale = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
+    mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+    bmesh.ops.scale(bm_roof_filler, vec=(0.0, 1.0, 1.0), space=mat_loc, verts=verts_to_scale)
+
+    # append filler to bm_roof
+    bm_roof_filler.to_mesh(m_roof_filler)
+    bm_roof_filler.free()
+    bm_roof.from_mesh(m_roof_filler)
+
+    # duplicate all, mirror
+    geom_to_duplicate = bm_roof.verts[:] + bm_roof.edges[:] + bm_roof.faces[:]
+    ret_dup = bmesh.ops.duplicate(bm_roof, geom=geom_to_duplicate)
+    mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+    verts_to_scale = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+    bmesh.ops.scale(bm_roof, vec=(-1.0, 1.0, 1.0), space=mat_loc, verts=verts_to_scale)
+
+    # remove doubles, recalculate normals
+    bmesh.ops.remove_doubles(bm_roof, verts=bm_roof.verts, dist=0.0001)
+    bmesh.ops.recalc_face_normals(bm_roof, faces=bm_roof.faces)
+
+    # if there is a wedge, get/create the points
+    if params_footprint.building_wedge_depth > 0 and params_footprint.building_wedge_width > 0:
+        verts_wedge = list()
+        verts_wedge.append((-0.5 * params_footprint.building_wedge_width,
+                            0.5 * params_footprint.building_depth + params_footprint.building_wedge_depth,
+                            params_general.floor_offset + params_general.floor_height * (1 + params_general.floor_count)))
+        verts_wedge.append((0,
+                            0.5 * params_footprint.building_depth + params_footprint.building_wedge_depth - params_roof.offset_wedge,
+                            params_general.floor_offset + params_general.floor_height * (1 + params_general.floor_count) + params_roof.height))
+        verts_wedge.append((0.5 * params_footprint.building_wedge_width,
+                            0.5 * params_footprint.building_depth + params_footprint.building_wedge_depth,
+                            params_general.floor_offset + params_general.floor_height * (1 + params_general.floor_count)))
+        # create mesh and bmesh
+        bm_roof_wedge = bmesh.new()
+        m_roof_wedge = bpy.data.meshes.new("PBGRoofWedge")
+        m_roof_wedge.from_pydata(verts_wedge, [(0, 1), (1, 2), (2, 0)], [(0, 1, 2)])
+        bm_roof_wedge.from_mesh(m_roof_wedge)
+
+        # extrude and scale
+        bm_roof_wedge.edges.ensure_lookup_table()
+        edges_to_extrude = bm_roof_wedge.edges[:2]
+        ret_extrude = bmesh.ops.extrude_edge_only(bm_roof_wedge, edges=edges_to_extrude, use_select_history=True)
+        verts_to_scale = [ele for ele in ret_extrude["geom"] if isinstance(ele, bmesh.types.BMVert)]
+        mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+        bmesh.ops.scale(bm_roof_wedge, vec=(1.0, 0.0, 1.0), space=mat_loc, verts=verts_to_scale)
+
+        # join bmeshes
+        bm_roof_wedge.to_mesh(m_roof_wedge)
+        bm_roof_wedge.free()
+        bm_roof.from_mesh(m_roof_wedge)
+
+    # create object.
+    bm_roof.to_mesh(m_roof)
+    bm_roof.free()
+    ob = bpy.data.objects.get("PBGRoof")
+    if ob is not None:
+        context.scene.objects.unlink(ob)
+        bpy.data.objects.remove(ob)
+
+    # link the created object to the scene
+    new_obj = bpy.data.objects.new("PBGRoof", m_roof)
+    context.scene.objects.link(new_obj)
+    return new_obj
+# end gen_mesh_roof

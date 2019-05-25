@@ -395,6 +395,21 @@ class PBGPropertyGroup(PropertyGroup):
         default=False
     )
 
+    roof_offset_width = FloatProperty(
+        name="roof offset width",
+        default=4.0
+    )
+
+    roof_offset_wedge = FloatProperty(
+        name="roof offset wedge",
+        default=7.5
+    )
+
+    roof_height = FloatProperty(
+        name="roof height",
+        default=3.0
+    )
+
 # end PBGPropertyGroup
 
 
@@ -611,13 +626,33 @@ class PBGToolbarStairsPanel(Panel):
         properties = context.scene.PBGPropertyGroup
 
         col = layout.column(align=True)
-        col.label(text="Label")
+        col.label(text="Stairs settings")
         col.prop(properties, "stairs_layout_width")
         col.prop(properties, "stairs_layout_depth")
         col.prop(properties, "stairs_stair_count")
         col.prop(properties, "stairs_width")
     # end draw
-# end PBGToolbarWindowPanel
+# end PBGToolbarStairsPanel
+
+
+class PBGToolbarRoofPanel(Panel):
+    bl_label = "Roof Settings"
+    bl_category = "PBG"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        properties = context.scene.PBGPropertyGroup
+
+        col = layout.column(align=True)
+        col.label(text="Roof settings")
+        col.prop(properties, "roof_offset_width")
+        col.prop(properties, "roof_offset_wedge")
+        col.prop(properties, "roof_height")
+    # end draw
+# end PBGToolbarRoofPanel
 
 
 class PBGToolbarGeneratePanel(Panel):

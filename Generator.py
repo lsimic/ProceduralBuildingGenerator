@@ -43,6 +43,8 @@ class Generator(bpy.types.Operator):
         params_footprint = GenLayout.ParamsFootprint.from_ui()
         params_stairs = GenMesh.ParamsStairs.from_ui()
         params_windows = GenMesh.ParamsWindows.from_ui()
+        params_roof = GenMesh.ParamsRoof.from_ui()
+
         door_position = ((0.0, 0.5*params_footprint.building_depth+params_footprint.building_wedge_depth,
                           params_general.floor_offset), 0)
 
@@ -97,6 +99,9 @@ class Generator(bpy.types.Operator):
             apply_positions(obj_pillar, layout["pillar_positions"])
             bpy.data.objects.remove(obj_pillar, do_unlink=True)
         # end if
+
+        GenMesh.gen_mesh_roof(context, params_general, footprint, params_footprint, params_roof)
+
         time_end = time.time()
         print(time_end - time_start)
         return {"FINISHED"}
