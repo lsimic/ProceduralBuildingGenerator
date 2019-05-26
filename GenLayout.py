@@ -249,10 +249,36 @@ def gen_layout(params_general: ParamsGeneral, footprint: list, door_position: tu
 
             # check whether the window intersects with the door, push first floor accordingly
             vert_1 = (window_pos[0] - 0.5 * window_width_x, window_pos[1] - 0.5 * window_width_y, 0)
-            vert_2 = (window_pos[0] - 0.5 * window_width_x, window_pos[1] - 0.5 * window_width_y, 0)
+            vert_2 = (window_pos[0] + 0.5 * window_width_x, window_pos[1] - 0.5 * window_width_y, 0)
             if not (Utils.vert_check_intersect(vert_1, door_start, door_end) or
-                    Utils.vert_check_intersect(vert_2, door_start, door_end)):
+                    Utils.vert_check_intersect(vert_2, door_start, door_end) or
+                    Utils.vert_check_intersect(window_pos, door_start, door_end)):
                 window_positions.append((window_pos, rot))
+            else:
+                # windows intersected with the door and was not pushed
+                if(Utils.vert_check_intersect(vert_1, door_start, door_end) and
+                        (not Utils.vert_check_intersect(vert_2, door_start, door_end))):
+                    window_loop = list()
+                    window_loop.append(door_end)
+                    window_loop.append((vert_2[0], vert_2[1], params_general.floor_offset))
+                    wall_loops.append(window_loop)
+                elif(Utils.vert_check_intersect(vert_2, door_start, door_end) and
+                     (not Utils.vert_check_intersect(vert_1, door_start, door_end))):
+                    window_loop = list()
+                    window_loop.append((vert_1[0], vert_1[1], params_general.floor_offset))
+                    window_loop.append(door_start)
+                    wall_loops.append(window_loop)
+                elif(Utils.vert_check_intersect(window_pos, door_start, door_end) and
+                     (not Utils.vert_check_intersect(vert_1, door_start, door_end)) and
+                     (not Utils.vert_check_intersect(vert_1, door_start, door_end))):
+                    window_loop = list()
+                    window_loop.append((vert_1[0], vert_1[1], params_general.floor_offset))
+                    window_loop.append(door_start)
+                    wall_loops.append(window_loop)
+                    window_loop = list()
+                    window_loop.append(door_end)
+                    window_loop.append((vert_2[0], vert_2[1], params_general.floor_offset))
+                    wall_loops.append(window_loop)
             # end if
 
             # push all other floors

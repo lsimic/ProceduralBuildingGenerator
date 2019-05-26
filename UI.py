@@ -655,6 +655,24 @@ class PBGToolbarRoofPanel(Panel):
 # end PBGToolbarRoofPanel
 
 
+class PBGToolbarDoorPanel(Panel):
+    bl_label = "Door Settings"
+    bl_category = "PBG"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_context = "objectmode"
+
+    def draw(self, context):
+        layout = self.layout
+        properties = context.scene.PBGPropertyGroup
+
+        col = layout.column(align=True)
+        col.label(text="Roof settings")
+        col.prop(properties, "door_size")
+    # end draw
+# end PBGToolbarDoorPanel
+
+
 class PBGToolbarGeneratePanel(Panel):
     # TODO: docstring
     bl_label = "Generate"
