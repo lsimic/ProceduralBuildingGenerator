@@ -29,7 +29,7 @@ class ParamsGeneral:
     def __init__(self, floor_count: int, floor_height: float, floor_offset: float, generate_separator: bool,
                  separator_height: float, separator_width: float, window_width: float, window_height: float,
                  window_offset: float, distance_window_window: float, generate_pillar: bool,
-                 distance_window_pillar: float, door_size: float):
+                 distance_window_pillar: float, door_width: float, door_height: float):
         self.floor_count = floor_count
         self.floor_height = floor_height
         self.floor_offset = floor_offset
@@ -42,7 +42,8 @@ class ParamsGeneral:
         self.distance_window_window = distance_window_window
         self.generate_pillar = generate_pillar
         self.distance_window_pillar = distance_window_pillar
-        self.door_size = door_size
+        self.door_width = door_width
+        self.door_height = door_height
     # end __init__
 
     @staticmethod
@@ -61,7 +62,8 @@ class ParamsGeneral:
             distance_window_window=properties.distance_window_window,
             generate_pillar=properties.generate_pillar,
             distance_window_pillar=properties.distance_window_pillar,
-            door_size=properties.door_size
+            door_width=properties.door_width,
+            door_height=properties.door_height
         )
         return params
     # end from_ui
@@ -232,8 +234,8 @@ def gen_layout(params_general: ParamsGeneral, footprint: list, door_position: tu
         rot = vec_edge.xy.angle_signed(vec_0.xy) - 0.5 * math.pi
 
         # calculate door range for calculating intersects
-        door_size_x = math.cos(door_position[1])*params_general.door_size
-        door_size_y = math.sin(door_position[1])*params_general.door_size
+        door_size_x = math.cos(door_position[1])*params_general.door_width
+        door_size_y = math.sin(door_position[1])*params_general.door_width
         door_start = (door_position[0][0]-0.5*door_size_x,
                       door_position[0][1]-0.5*door_size_y,
                       params_general.floor_offset)

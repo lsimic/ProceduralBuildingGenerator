@@ -268,11 +268,6 @@ class PBGPropertyGroup(PropertyGroup):
         default=0.08
     )
 
-    door_size = FloatProperty(
-        name="Door size",
-        default=2.5
-    )
-
     window_above_types = [
         ("WALL", "WALL", "", 0),
         ("SIMPLE", "SIMPLE", "", 1),
@@ -410,6 +405,40 @@ class PBGPropertyGroup(PropertyGroup):
         default=3.0
     )
 
+    door_width = FloatProperty(
+        name="Door width",
+        default=2.5
+    )
+
+    door_height = FloatProperty(
+        name="Door height",
+        default=2.0
+    )
+
+    door_around_section_height = FloatProperty(
+        name="Door around section height",
+        default=0.2
+    )
+
+    door_around_section_width = FloatProperty(
+        name="Door around section width",
+        default=0.15
+    )
+
+    door_around_pillar_width = FloatProperty(
+        name="Door around pillar width",
+        default=0.15
+    )
+
+    door_around_inner_depth = FloatProperty(
+        name="Door around inner depth",
+        default=0.1
+    )
+
+    door_around_outer_depth = FloatProperty(
+        name="Door around outer depth",
+        default=0.03
+    )
 # end PBGPropertyGroup
 
 
@@ -667,8 +696,15 @@ class PBGToolbarDoorPanel(Panel):
         properties = context.scene.PBGPropertyGroup
 
         col = layout.column(align=True)
-        col.label(text="Roof settings")
-        col.prop(properties, "door_size")
+        col.label(text="Door settings")
+        col.prop(properties, "door_width")
+        col.prop(properties, "door_height")
+        col.label(text="Around Door")
+        col.prop(properties, "door_around_section_height")
+        col.prop(properties, "door_around_section_width")
+        col.prop(properties, "door_around_pillar_width")
+        col.prop(properties, "door_around_inner_depth")
+        col.prop(properties, "door_around_outer_depth")
     # end draw
 # end PBGToolbarDoorPanel
 
