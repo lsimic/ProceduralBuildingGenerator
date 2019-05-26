@@ -250,12 +250,18 @@ class ParamsRoof:
 
 class ParamsDoor:
     def __init__(self, section_height: float, section_width: float, pillar_width: float, inner_depth: float,
-                 outer_depth: float):
+                 outer_depth: float, spacing: float, count_x: int, count_z: int,
+                 block_depth: float, block_width: float):
         self.section_height = section_height
         self.section_width = section_width
         self.pillar_width = pillar_width
         self.inner_depth = inner_depth
         self.outer_depth = outer_depth
+        self.spacing = spacing
+        self.count_x = count_x
+        self.count_z = count_z
+        self.block_depth = block_depth
+        self.block_width = block_width
     # end __init__
 
     @staticmethod
@@ -266,11 +272,17 @@ class ParamsDoor:
             properties.door_around_section_width,
             properties.door_around_pillar_width,
             properties.door_around_inner_depth,
-            properties.door_around_outer_depth
+            properties.door_around_outer_depth,
+            properties.door_spacing,
+            properties.door_count_x,
+            properties.door_count_z,
+            properties.door_block_depth,
+            properties.door_block_width
         )
         return params
     # end from_ui
 # end ParamsDoor
+
 
 def gen_mesh_floor_separator(context: bpy.types.Context, footprint: list,
                              section_mesh: bpy.types.Mesh) -> bpy.types.Object:
@@ -1489,3 +1501,126 @@ def gen_mesh_door_around(context: bpy.types.Context, params_general: GenLayout.P
     context.scene.objects.link(new_obj)
     return new_obj
 # end gen_mesh_door_around
+
+
+def gen_mesh_door(context: bpy.types.Context, params_general: GenLayout.ParamsGeneral, params_door: ParamsDoor):
+    bm = bmesh.new()
+    # door is created in (0, 0, 0)
+
+    # calculate frame size
+    frame_size_x = 0.5*params_general.door_width - params_door.pillar_width
+    frame_size_z = params_general.door_height - params_door.section_height
+
+    # create loop going around the door wing
+    verts = list()
+    verts.append((0.0, 0.0, 0.0))
+    verts.append((frame_size_x, 0.0, 0.0))
+    verts.append((frame_size_x, 0.0, frame_size_z))
+    verts.append((0.0, 0.0, frame_size_z))
+    m = bpy.data.meshes.new("PBGDoorFrame")
+    m.from_pydata(verts, [(0, 1), (1, 2), (2, 3), (3, 0)], [])
+    bm.from_mesh(m)
+
+    # extrude edges, scale inwards
+    sf_x = (frame_size_x - params_door.spacing)/frame_size_x
+    sf_z = (frame_size_z - params_door.spacing)/frame_size_z
+
+    ret_ext = bmesh.ops.extrude_edge_only(bm, edges=bm.edges, use_select_history=True)
+    verts_to_scale = [ele for ele in ret_ext["geom"] if isinstance(ele, bmesh.types.BMVert)]
+    mat_loc = mathutils.Matrix.Translation((-0.5*frame_size_x, 0.0, -0.5*frame_size_z))
+    bmesh.ops.scale(bm, verts=verts_to_scale, vec=(sf_x, 1.0, sf_z), space=mat_loc)
+
+    # calculate block width, depth
+    block_size_x = (frame_size_x - params_door.spacing)/params_door.count_x
+    block_size_z = (frame_size_z - params_door.spacing)/params_door.count_z
+
+    # create layout verts, also used for filler face.
+    size_x = block_size_x-params_door.spacing - 2*params_door.block_width
+    size_z = block_size_z-params_door.spacing - 2*params_door.block_width
+    verts = list()
+    verts.append((-0.5*size_x, -0.5*size_z, 0.0))
+    verts.append((-0.5*size_x, 0.5*size_z, 0.0))
+    verts.append((0.5*size_x, 0.5*size_z, 0.0))
+    verts.append((0.5*size_x, -0.5*size_z, 0.0))
+
+    # create section
+    params = GenUtils.ParamsSectionFactory.horizontal_separator_params_large()
+    sequence = GenUtils.gen_section_element_list(params)
+    mesh_section = GenUtils.gen_section_mesh(sequence, params_door.block_width, params_door.block_depth )
+
+    # fix section in bmesh.
+    bm_section = bmesh.new()
+    bm_section.from_mesh(mesh_section)
+    bm_section.verts.ensure_lookup_table()
+    verts_to_translate = list()
+    verts_to_translate.append(bm_section.verts[len(bm_section.verts) - 1])
+    vec_trans = (0.0, params_door.block_depth, 0.5*params_door.spacing)
+    mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+    bmesh.ops.translate(bm_section, vec=vec_trans, space=mat_loc, verts=verts_to_translate)
+    mat_rot = mathutils.Matrix.Rotation(math.radians(-90), 3, "X")
+    bmesh.ops.rotate(bm_section, cent=(0.0, 0.0, 0.0), space=mat_loc, verts=bm_section.verts, matrix=mat_rot)
+    bm_section.to_mesh(mesh_section)
+    bm_section.free()
+
+    # extrude section along verts
+    mesh_block = Utils.extrude_along_edges(mesh_section, verts, True)
+
+    # add to bmesh
+    bm_block = bmesh.new()
+    bm_block.from_mesh(mesh_block)
+
+    # add filler face
+    m_filler_face = bpy.data.meshes.new("PBGDoorBlockFillerFace")
+    m_filler_face.from_pydata(verts, [(0, 1), (1, 2), (2, 3), (3, 0)], [(0, 1, 2, 3)])
+    bm_block.from_mesh(m_filler_face)
+
+    # rotate
+    mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+    mat_rot = mathutils.Matrix.Rotation(math.radians(-90), 3, "X")
+    bmesh.ops.rotate(bm_block, cent=(0.0, 0.0, 0.0), space=mat_loc, verts=bm_block.verts, matrix=mat_rot)
+
+    # place in position
+    vec_trans = (0.5*block_size_x + 0.5*params_door.spacing,
+                 params_door.block_depth,
+                 0.5*block_size_z + 0.5*params_door.spacing)
+    bmesh.ops.translate(bm_block, space=mat_loc, vec=vec_trans, verts=bm_block.verts)
+
+    # duplicate
+    geom_orig = bm_block.verts[:] + bm_block.edges[:] + bm_block.faces[:]
+    for i in range(0, params_door.count_x):
+        for j in range(0, params_door.count_z):
+            ret_dup = bmesh.ops.duplicate(bm_block, geom=geom_orig)
+            verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+            vec_trans = (i*block_size_x, 0.0, j*block_size_z)
+            bmesh.ops.translate(bm_block, space=mat_loc, vec=vec_trans, verts=verts_to_translate)
+
+    # remove doubles, recalc normals, join meshes
+    bmesh.ops.remove_doubles(bm_block, verts=bm_block.verts)
+    bmesh.ops.recalc_face_normals(bm_block, faces=bm_block.faces)
+    bm_block.to_mesh(mesh_block)
+    bm_block.free()
+    bm.from_mesh(mesh_block)
+
+    # duplicate and move on x
+    geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+    ret_dup = bmesh.ops.duplicate(bm, geom=geom)
+    verts_to_translate = [ele for ele in ret_dup["geom"] if isinstance(ele, bmesh.types.BMVert)]
+    vec_trans = (-frame_size_x, 0.0, 0.0)
+    bmesh.ops.translate(bm, vec=vec_trans, space=mat_loc, verts=verts_to_translate)
+    mat_loc=mathutils.Matrix.Translation((0.0, 0.0, 0.0))
+    bmesh.ops.scale(bm, vec=(1.0, -1.0, 1.0), space=mat_loc, verts=bm.verts)
+
+    # create object
+    m = bpy.data.meshes.new("PBGDoorComplete")
+    bm.to_mesh(m)
+    bm.free()
+    ob = bpy.data.objects.get("PBGDoorComplete")
+    if ob is not None:
+        context.scene.objects.unlink(ob)
+        bpy.data.objects.remove(ob)
+
+    # link the created object to the scene
+    new_obj = bpy.data.objects.new("PBGDoorComplete", m)
+    context.scene.objects.link(new_obj)
+    return new_obj
+# end gen_mesh_door

@@ -407,12 +407,12 @@ class PBGPropertyGroup(PropertyGroup):
 
     door_width = FloatProperty(
         name="Door width",
-        default=2.5
+        default=2.0
     )
 
     door_height = FloatProperty(
         name="Door height",
-        default=2.0
+        default=2.5
     )
 
     door_around_section_height = FloatProperty(
@@ -439,6 +439,32 @@ class PBGPropertyGroup(PropertyGroup):
         name="Door around outer depth",
         default=0.03
     )
+
+    door_spacing = FloatProperty(
+        name="Door spacing",
+        default=0.1
+    )
+
+    door_count_x = IntProperty(
+        name="Door count x",
+        default=2
+    )
+
+    door_count_z = IntProperty(
+        name="Door count x",
+        default=5
+    )
+
+    door_block_depth = FloatProperty(
+        name="Door block depth",
+        default=0.07
+    )
+
+    door_block_width = FloatProperty(
+        name="Door block width",
+        default=0.05
+    )
+
 # end PBGPropertyGroup
 
 
@@ -705,6 +731,12 @@ class PBGToolbarDoorPanel(Panel):
         col.prop(properties, "door_around_pillar_width")
         col.prop(properties, "door_around_inner_depth")
         col.prop(properties, "door_around_outer_depth")
+        col.label(text="Doors")
+        col.prop(properties, "door_spacing")
+        col.prop(properties, "door_count_x")
+        col.prop(properties, "door_count_z")
+        col.prop(properties, "door_block_width")
+        col.prop(properties, "door_block_depth")
     # end draw
 # end PBGToolbarDoorPanel
 

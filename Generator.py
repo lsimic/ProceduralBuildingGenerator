@@ -106,6 +106,10 @@ class Generator(bpy.types.Operator):
         apply_positions(obj_door_around, door_positions)
         bpy.data.objects.remove(obj_door_around, do_unlink=True)
 
+        obj_door = GenMesh.gen_mesh_door(context, params_general, params_door)
+        apply_positions(obj_door, door_positions)
+        bpy.data.objects.remove(obj_door, do_unlink=True)
+
         if params_general.generate_pillar == True:
             obj_pillar = GenMesh.gen_mesh_pillar(context, params_pillar, params_general, section_mesh.copy())
             apply_positions(obj_pillar, layout["pillar_positions"])
