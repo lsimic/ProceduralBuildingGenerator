@@ -1339,6 +1339,13 @@ def gen_mesh_roof(context: bpy.types.Context, params_general: GenLayout.ParamsGe
     bmesh.ops.remove_doubles(bm_roof, verts=bm_roof.verts, dist=0.0001)
     bmesh.ops.recalc_face_normals(bm_roof, faces=bm_roof.faces)
 
+    # remove middle edge
+    edges_to_dissolve = list()
+    for edge in bm_roof.edges:
+        if math.isclose(edge.verts[0].co[0], 0, rel_tol=1e-04) and math.isclose(edge.verts[1].co[0], 0, rel_tol=1e-04):
+            edges_to_dissolve.append(edge)
+    bmesh.ops.dissolve_edges(bm_roof, edges=edges_to_dissolve, use_verts=True)
+
     # if there is a wedge, get/create the points
     if params_footprint.building_wedge_depth > 0 and params_footprint.building_wedge_width > 0:
         verts_wedge = list()
@@ -1354,7 +1361,7 @@ def gen_mesh_roof(context: bpy.types.Context, params_general: GenLayout.ParamsGe
         # create mesh and bmesh
         bm_roof_wedge = bmesh.new()
         m_roof_wedge = bpy.data.meshes.new("PBGRoofWedge")
-        m_roof_wedge.from_pydata(verts_wedge, [(0, 1), (1, 2), (2, 0)], [(0, 1, 2)])
+        m_roof_wedge.from_pydata(verts_wedge, [(1, 0), (1, 2), (2, 0)], [(0, 1, 2)])
         bm_roof_wedge.from_mesh(m_roof_wedge)
 
         # extrude and scale
@@ -1370,6 +1377,9 @@ def gen_mesh_roof(context: bpy.types.Context, params_general: GenLayout.ParamsGe
         bm_roof_wedge.free()
         bm_roof.from_mesh(m_roof_wedge)
 
+    # UV unwrap the roof
+    uv_unwrap(bm_roof)
+
     # create object.
     bm_roof.to_mesh(m_roof)
     bm_roof.free()
@@ -1383,6 +1393,28 @@ def gen_mesh_roof(context: bpy.types.Context, params_general: GenLayout.ParamsGe
     context.scene.objects.link(new_obj)
     return new_obj
 # end gen_mesh_roof
+
+
+def uv_unwrap(bm):
+    uv_layer = bm.loops.layers.uv.verify()
+    bm.faces.layers.tex.verify()  # currently blender needs both layers.
+
+    # adjust UVs
+    bm.verts.ensure_lookup_table()
+    for face in bm.faces:
+        no = face.normal
+        vec_no = mathutils.Vector((no[0], no[1], 0.0))
+        vec_no.normalize()
+        mat_proj = mathutils.Matrix.OrthoProjection(vec_no, 3)
+        vec_x = mathutils.Vector((1.0, 0.0, 0.0))
+        angle = vec_x.xy.angle_signed(vec_no.xy)
+        mat_rot = mathutils.Matrix.Rotation(angle, 3, "Z")
+        for loop in face.loops:
+            loopuv = loop[uv_layer]
+            vert_proj = mat_proj * loop.vert.co
+            vert_uv_co = mat_rot * vert_proj
+            uv = (vert_uv_co[1], vert_uv_co[2])
+            loopuv.uv = uv
 
 
 def gen_mesh_door_above(context: bpy.types.Context, params_general: GenLayout.ParamsGeneral,
@@ -1546,7 +1578,7 @@ def gen_mesh_door(context: bpy.types.Context, params_general: GenLayout.ParamsGe
     # create section
     params = GenUtils.ParamsSectionFactory.horizontal_separator_params_large()
     sequence = GenUtils.gen_section_element_list(params)
-    mesh_section = GenUtils.gen_section_mesh(sequence, params_door.block_width, params_door.block_depth )
+    mesh_section = GenUtils.gen_section_mesh(sequence, params_door.block_width, params_door.block_depth)
 
     # fix section in bmesh.
     bm_section = bmesh.new()
