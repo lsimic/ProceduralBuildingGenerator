@@ -1229,11 +1229,18 @@ def gen_mesh_windows(context: bpy.types.Context, params_general: GenLayout.Param
     m_bottom = Utils.extrude_along_edges(m_section.copy(), layout_bottom, True)
     m_top = Utils.extrude_along_edges(m_section, layout_top, True)
 
-    bm.from_mesh(m_bottom)
     bm.from_mesh(m_bottom_glass)
+    for face in bm.faces:
+        face.material_index = 1
+    bm.from_mesh(m_bottom)
+
     if params_windows.split_top == True:
-        bm.from_mesh(m_top)
+        faces_to_exclude = bm.faces[:]
         bm.from_mesh(m_top_glass)
+        for face in bm.faces:
+            if face not in faces_to_exclude:
+                face.material_index = 1
+        bm.from_mesh(m_top)
 
     # duplicate and translate frames
     geom_orig = bm.verts[:] + bm.edges[:] + bm.faces[:]
@@ -1245,8 +1252,12 @@ def gen_mesh_windows(context: bpy.types.Context, params_general: GenLayout.Param
         bmesh.ops.translate(bm, vec=vec_trans, verts=verts_to_translate, space=mat_loc)
 
     if params_windows.split_top == False:
-        bm.from_mesh(m_top)
+        faces_to_exclude = bm.faces[:]
         bm.from_mesh(m_top_glass)
+        for face in bm.faces:
+            if face not in faces_to_exclude:
+                face.material_index = 1
+        bm.from_mesh(m_top)
 
     # rotate window, move on z
     mat_loc = mathutils.Matrix.Translation((0.0, 0.0, 0.0))
